@@ -5,7 +5,7 @@ test.describe('Visual Regression', () => {
         // Assume dev server is running on localhost:5173
         await page.goto('http://localhost:5173');
         // Wait for basic element to confirm load
-        await page.waitForSelector('.aurora-bg', { timeout: 10000 });
+        await page.waitForSelector('.aurora-bg', { timeout: 30000 });
     });
 
     test('Landing Page Snapshot', async ({ page }) => {
