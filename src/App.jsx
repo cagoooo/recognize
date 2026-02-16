@@ -3,6 +3,7 @@ import * as XLSX from 'xlsx';
 import { auth, db, googleProvider } from './firebase';
 import { useAuth } from './hooks/useAuth';
 import { filterStudents } from './lib/search';
+import { groupRandomly, groupHeterogeneously, groupByInterest } from './lib/grouping';
 import {
     Users,
     Play,
@@ -182,7 +183,7 @@ const App = () => {
                 </div>
             </header>
 
-            <main className="w-full max-w-5xl px-4 flex flex-col items-center relative z-10 pt-40 md:pt-52 pb-20">
+            <main className="w-full max-w-5xl px-4 flex flex-col items-center relative z-10 pt-64 md:pt-80 pb-20">
                 {/* Spacer for Fixed Header */}
                 <div className="w-full h-8 md:hidden" />
                 <AnimatePresence mode="wait">
@@ -221,7 +222,7 @@ const HeroSection = ({ onLogin }) => (
             <div className="blob-shape bg-cyan-500 w-56 h-56 md:w-80 md:h-80 -bottom-20 left-10 md:left-20 animate-blob animation-delay-4000 mix-blend-multiply opacity-40" />
         </div>
 
-        <div className="relative z-10 mb-12 md:mb-20 animate-bounce-slow">
+        <div className="relative z-10 mb-12 md:mb-20 animate-bounce-slow mt-32">
             <div className="glass-hero-card w-40 h-40 md:w-56 md:h-56 flex items-center justify-center p-6 md:p-8 glow-primary transform hover:scale-105 transition-transform duration-500">
                 <Users className="w-full h-full text-indigo-600 drop-shadow-lg" />
                 <motion.div
@@ -261,7 +262,7 @@ const HeroSection = ({ onLogin }) => (
 );
 
 const Dashboard = ({ onNavigate }) => (
-    <div className="flex flex-col items-center gap-14 w-full">
+    <div className="flex flex-col items-center gap-14 w-full mt-32">
         <motion.div
             whileHover={{ y: -12, scale: 1.01 }}
             onClick={() => onNavigate('play')}
@@ -343,9 +344,11 @@ const ClassManager = ({ userId, onBack, onStartGame, onNavigate, mode = 'manage'
 
     return (
         <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center w-full">
-            <button onClick={onBack} className="btn-icon-back mb-12">
-                <ArrowLeft className="w-8 h-8" />
-            </button>
+            <div className="w-full max-w-5xl flex justify-start px-2 mb-8">
+                <button onClick={onBack} className="btn-icon-back">
+                    <ArrowLeft className="w-8 h-8" />
+                </button>
+            </div>
 
             {/* Hero Section / Create Class */}
             <div className="clay-card clay-card-indigo p-12 text-center max-w-lg w-full mx-auto mb-20 relative overflow-hidden text-white border-white/20">
@@ -511,6 +514,12 @@ const StudentManager = ({ cls, onBack, onStartGame }) => {
     const [editingTagsStudent, setEditingTagsStudent] = useState(null);
     const [showImportHelp, setShowImportHelp] = useState(false); // New state for help toggle
 
+    // Grouping State
+    const [showGroupingModal, setShowGroupingModal] = useState(false);
+    const [groupingStrategy, setGroupingStrategy] = useState('random'); // random, hetero, interest
+    const [groupSize, setGroupSize] = useState(4);
+    const [groups, setGroups] = useState([]);
+
     // 收集所有標籤
     const allTags = React.useMemo(() => {
         const tags = new Set();
@@ -525,6 +534,20 @@ const StudentManager = ({ cls, onBack, onStartGame }) => {
         }
         return result;
     }, [students, searchQuery, tagFilter]);
+
+    const handleGroup = () => {
+        let result = [];
+        const targets = filteredStudents.length > 0 ? filteredStudents : students;
+
+        if (groupingStrategy === 'random') {
+            result = groupRandomly(targets, groupSize);
+        } else if (groupingStrategy === 'hetero') {
+            result = groupHeterogeneously(targets, groupSize);
+        } else if (groupingStrategy === 'interest') {
+            result = groupByInterest(targets, groupSize);
+        }
+        setGroups(result);
+    };
 
     const handleDeleteStudent = async (id, name) => {
         if (confirm(`確定要將「${name}」從名單中移除嗎？`)) {
@@ -639,16 +662,28 @@ const StudentManager = ({ cls, onBack, onStartGame }) => {
                 </div>
             </div>
 
-            <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => onStartGame(filteredStudents)}
-                disabled={filteredStudents.length < 4}
-                className="btn-clay btn-clay-orange px-20 py-7 text-2xl mb-12 mx-auto pulse-primary"
-            >
-                <Gamepad2 className="w-8 h-8 mr-3" />
-                {tagFilter === 'all' ? '啟動全班練習' : `啟動「${tagFilter}」特訓`}
-            </motion.button>
+            <div className="flex gap-4 mb-12 mx-auto">
+                <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => onStartGame(filteredStudents)}
+                    disabled={filteredStudents.length < 4}
+                    className="btn-clay btn-clay-orange px-10 py-5 text-xl pulse-primary flex items-center"
+                >
+                    <Gamepad2 className="w-6 h-6 mr-2" />
+                    {tagFilter === 'all' ? '啟動全班練習' : `啟動「${tagFilter}」特訓`}
+                </motion.button>
+
+                <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setShowGroupingModal(true)}
+                    className="btn-clay bg-indigo-500 text-white px-8 py-5 text-xl flex items-center shadow-lg border-2 border-indigo-400"
+                >
+                    <Users className="w-6 h-6 mr-2" />
+                    分組助手
+                </motion.button>
+            </div>
 
             {/* 搜尋 與 篩選 (New UI) */}
             <motion.div
@@ -872,74 +907,117 @@ const StudentManager = ({ cls, onBack, onStartGame }) => {
                 </div>
             </div>
 
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-6 w-full max-w-7xl px-4 pb-20">
-                {filteredStudents.map((std, index) => (
-                    <motion.div
-                        key={std.id}
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: index * 0.02 }}
-                        whileHover={{ y: -8, scale: 1.05, zIndex: 20 }}
-                        className="flex flex-col items-center group relative cursor-pointer"
-                        onClick={() => setEditingTagsStudent(std)}
-                    >
-                        {/* Card Container - Pro Max Premium */}
-                        <div className="w-full aspect-[3/4] clay-card p-0 overflow-hidden relative border-4 border-white group-hover:border-indigo-200 shadow-clay-card group-hover:shadow-indigo-500/30 transition-all duration-300 rounded-[32px] bg-white/80 backdrop-blur-xl">
 
-                            {/* Action Buttons (Compact) */}
-                            <div className="absolute top-2 right-2 flex flex-col gap-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); handleDeleteStudent(std.id, std.name); }}
-                                    className="btn-square-danger shadow-lg hover:scale-110 transition-transform bg-white/90 backdrop-blur-md"
-                                    title="移除"
-                                >
-                                    <Trash2 className="w-5 h-5" />
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-6 w-full max-w-7xl px-4 pb-20">
+                {filteredStudents.map(student => (
+                    <StudentCard
+                        key={student.id}
+                        student={student}
+                        onEdit={() => setEditingTagsStudent(student)}
+                        onDelete={(id) => handleDeleteStudent(id, student.name)}
+                    />
+                ))}
+            </div>
+
+            {/* Grouping Modal */}
+            <AnimatePresence>
+                {showGroupingModal && (
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4" onClick={() => setShowGroupingModal(false)}>
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="bg-white/90 backdrop-blur-xl rounded-[40px] p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-white/50"
+                        >
+                            <div className="flex justify-between items-center mb-8">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 bg-indigo-100 rounded-2xl flex items-center justify-center text-indigo-600">
+                                        <Users className="w-6 h-6" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-2xl font-black text-indigo-950">智慧分組助手</h3>
+                                        <p className="text-indigo-400 font-bold text-sm">Smart Grouping</p>
+                                    </div>
+                                </div>
+                                <button onClick={() => setShowGroupingModal(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+                                    <XCircle className="w-8 h-8 text-slate-400" />
                                 </button>
                             </div>
 
-                            {/* Photo Area */}
-                            <div className="w-full h-full bg-gradient-to-br from-indigo-50 to-purple-50 relative group-hover:from-indigo-100 group-hover:to-purple-100 transition-colors duration-500">
-                                {std.photoUrl ? (
-                                    <img src={std.photoUrl} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt={std.name} />
-                                ) : (
-                                    <div className="w-full h-full flex flex-col items-center justify-center relative overflow-hidden pb-8">
-                                        <div className="absolute inset-0 bg-gradient-to-tr from-indigo-100/50 via-white/20 to-purple-100/50 opacity-50" />
-                                        <div className="w-20 h-20 bg-white/40 backdrop-blur-md rounded-[24px] flex items-center justify-center mb-1 shadow-lg border border-white/50 group-hover:scale-110 transition-transform duration-500 z-10">
-                                            <User className="w-10 h-10 text-indigo-300 group-hover:text-indigo-500 transition-colors duration-300" />
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Gradient Overlay & Info */}
-                                <div className="absolute inset-x-0 bottom-0 p-4 pt-24 bg-gradient-to-t from-white via-white/95 to-transparent z-20">
-                                    <div className="flex flex-col items-center text-center">
-                                        <p className="text-indigo-950 font-black text-xl leading-tight drop-shadow-sm w-full truncate px-2 relative z-30">
-                                            {std.name}
-                                        </p>
-                                        {std.seatNumber && (
-                                            <span className="mt-2 px-3 py-1 bg-indigo-500 text-white rounded-full text-xs font-bold shadow-md shadow-indigo-200 uppercase tracking-wider relative z-30">
-                                                #{std.seatNumber}
-                                            </span>
-                                        )}
-                                    </div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                                <div className="clay-card p-4 bg-indigo-50/50">
+                                    <label className="text-sm font-bold text-indigo-400 uppercase tracking-wider mb-2 block">分組策略</label>
+                                    <select
+                                        value={groupingStrategy}
+                                        onChange={(e) => setGroupingStrategy(e.target.value)}
+                                        className="w-full bg-white border-2 border-indigo-100 rounded-xl px-4 py-2 font-bold text-indigo-900 outline-none focus:border-indigo-400"
+                                    >
+                                        <option value="random">🎲 隨機分組</option>
+                                        <option value="hetero">⚡ 異質分組 (強弱混合)</option>
+                                        <option value="interest">❤️ 興趣分組 (同標籤)</option>
+                                    </select>
                                 </div>
+                                <div className="clay-card p-4 bg-indigo-50/50">
+                                    <label className="text-sm font-bold text-indigo-400 uppercase tracking-wider mb-2 block">每組人數</label>
+                                    <input
+                                        type="number"
+                                        min="2"
+                                        max="10"
+                                        value={groupSize}
+                                        onChange={(e) => setGroupSize(parseInt(e.target.value))}
+                                        className="w-full bg-white border-2 border-indigo-100 rounded-xl px-4 py-2 font-bold text-indigo-900 outline-none focus:border-indigo-400"
+                                    />
+                                </div>
+                                <button
+                                    onClick={handleGroup}
+                                    className="btn-clay bg-indigo-600 text-white flex items-center justify-center gap-2 shadow-lg hover:scale-105 active:scale-95 transition-all"
+                                >
+                                    <Sparkles className="w-5 h-5" />
+                                    <span className="text-lg">開始分組</span>
+                                </button>
                             </div>
 
-                            {/* Tags (Minimalist Pills) */}
-                            {std.tags && std.tags.length > 0 && (
-                                <div className="absolute top-3 left-3 flex flex-wrap gap-1.5 z-10">
-                                    {std.tags.slice(0, 1).map(tag => (
-                                        <span key={tag} className="px-2 py-1 bg-white/90 backdrop-blur-md rounded-lg text-[10px] font-black text-indigo-600 shadow-sm border border-indigo-50/50">
-                                            {tag}
-                                        </span>
+                            {/* Results */}
+                            {groups.length > 0 && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {groups.map((group, idx) => (
+                                        <div key={idx} className="clay-card p-4 border-2 border-indigo-50 hover:border-indigo-200 transition-colors">
+                                            <div className="flex justify-between items-center mb-4 pb-2 border-b border-indigo-50">
+                                                <h4 className="font-black text-indigo-900 text-lg">第 {idx + 1} 組</h4>
+                                                <span className="bg-indigo-100 text-indigo-600 px-2 py-1 rounded-lg text-xs font-bold">{group.length} 人</span>
+                                            </div>
+                                            <div className="flex flex-col gap-2">
+                                                {group.map(student => (
+                                                    <div key={student.id} className="flex items-center gap-3 p-2 hover:bg-white rounded-xl transition-colors">
+                                                        <img
+                                                            src={student.photoUrl || `https://api.dicebear.com/7.x/fun-emoji/svg?seed=${student.name}`}
+                                                            className="w-8 h-8 rounded-full object-cover bg-indigo-50"
+                                                            alt=""
+                                                        />
+                                                        <span className="font-bold text-slate-700">{student.name}</span>
+                                                        {student.tags && student.tags[0] && (
+                                                            <span className="text-xs bg-slate-100 text-slate-500 px-1 rounded ml-auto">{student.tags[0]}</span>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
                                     ))}
-                                    {std.tags.length > 1 && <span className="w-5 h-5 rounded-full bg-indigo-500 text-white text-[9px] flex items-center justify-center font-bold shadow-sm border-2 border-white">+{std.tags.length - 1}</span>}
                                 </div>
                             )}
-                        </div>
-                    </motion.div>
-                ))}
-            </div>
+
+                            {groups.length === 0 && (
+                                <div className="text-center py-20 opacity-50">
+                                    <Users className="w-16 h-16 mx-auto mb-4 text-slate-300" />
+                                    <p className="font-bold text-slate-400 text-xl">點擊「開始分組」產生結果</p>
+                                </div>
+                            )}
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
 
             {
                 editingTagsStudent && (
@@ -960,12 +1038,79 @@ const StudentManager = ({ cls, onBack, onStartGame }) => {
     );
 };
 
+const StudentCard = ({ student, onEdit, onDelete }) => {
+    return (
+        <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            whileHover={{ y: -8, scale: 1.05, zIndex: 20 }}
+            className="flex flex-col items-center group relative cursor-pointer"
+            onClick={onEdit}
+        >
+            {/* Card Container - Pro Max Premium */}
+            <div className="w-full aspect-[3/4] clay-card p-0 overflow-hidden relative border-4 border-white group-hover:border-indigo-200 shadow-clay-card group-hover:shadow-indigo-500/30 transition-all duration-300 rounded-[32px] bg-white/80 backdrop-blur-xl">
+
+                {/* Action Buttons (Compact) */}
+                <div className="absolute top-2 right-2 flex flex-col gap-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onDelete(student.id); }}
+                        className="btn-square-danger shadow-lg hover:scale-110 transition-transform bg-white/90 backdrop-blur-md"
+                        title="移除"
+                    >
+                        <Trash2 className="w-5 h-5" />
+                    </button>
+                </div>
+
+                {/* Photo Area */}
+                <div className="w-full h-full bg-gradient-to-br from-indigo-50 to-purple-50 relative group-hover:from-indigo-100 group-hover:to-purple-100 transition-colors duration-500">
+                    {student.photoUrl ? (
+                        <img src={student.photoUrl} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt={student.name} />
+                    ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center relative overflow-hidden pb-8">
+                            <div className="absolute inset-0 bg-gradient-to-tr from-indigo-100/50 via-white/20 to-purple-100/50 opacity-50" />
+                            <div className="w-20 h-20 bg-white/40 backdrop-blur-md rounded-[24px] flex items-center justify-center mb-1 shadow-lg border border-white/50 group-hover:scale-110 transition-transform duration-500 z-10">
+                                <User className="w-10 h-10 text-indigo-300 group-hover:text-indigo-500 transition-colors duration-300" />
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Gradient Overlay & Info */}
+                    <div className="absolute inset-x-0 bottom-0 p-4 pt-24 bg-gradient-to-t from-white via-white/95 to-transparent z-20">
+                        <div className="flex flex-col items-center text-center">
+                            <p className="text-indigo-950 font-black text-xl leading-tight drop-shadow-sm w-full truncate px-2 relative z-30">
+                                {student.name}
+                            </p>
+                            {student.seatNumber && (
+                                <span className="mt-2 px-3 py-1 bg-indigo-500 text-white rounded-full text-xs font-bold shadow-md shadow-indigo-200 uppercase tracking-wider relative z-30">
+                                    #{student.seatNumber}
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Tags (Minimalist Pills) */}
+                {student.tags && student.tags.length > 0 && (
+                    <div className="absolute top-3 left-3 flex flex-wrap gap-1.5 z-10">
+                        {student.tags.slice(0, 1).map(tag => (
+                            <span key={tag} className="px-2 py-1 bg-white/90 backdrop-blur-md rounded-lg text-[10px] font-black text-indigo-600 shadow-sm border border-indigo-50/50">
+                                {tag}
+                            </span>
+                        ))}
+                        {student.tags.length > 1 && <span className="w-5 h-5 rounded-full bg-indigo-500 text-white text-[9px] flex items-center justify-center font-bold shadow-sm border-2 border-white">+{student.tags.length - 1}</span>}
+                    </div>
+                )}
+            </div>
+        </motion.div>
+    );
+};
+
 // Student Details & Tag Editor Modal
 const TagEditor = ({ student, onClose, onSave }) => {
     const [tags, setTags] = useState(student.tags || []);
     const [description, setDescription] = useState(student.description || '');
     const [inputValue, setInputValue] = useState('');
-    const { generateDescription, loading: aiLoading, error: aiError, description: aiDescription } = useGeminiVision();
+    const { generateDescription, loading: aiLoading, error: aiError, description: aiDescription, tags: aiTags } = useGeminiVision();
 
     const handleAiGenerate = async () => {
         if (student.photoUrl) {
@@ -975,9 +1120,20 @@ const TagEditor = ({ student, onClose, onSave }) => {
 
     useEffect(() => {
         if (aiDescription) {
-            setDescription(prev => prev ? prev + '\n' + aiDescription : aiDescription);
+            setDescription(prev => {
+                // Leaf check to avoid duplicate appending if effect runs twice
+                if (prev && prev.includes(aiDescription)) return prev;
+                return prev ? prev + '\n' + aiDescription : aiDescription;
+            });
         }
-    }, [aiDescription]);
+        if (aiTags && aiTags.length > 0) {
+            setTags(prevTags => {
+                const newTags = aiTags.filter(t => !prevTags.includes(t));
+                if (newTags.length === 0) return prevTags;
+                return [...prevTags, ...newTags];
+            });
+        }
+    }, [aiDescription, aiTags]);
 
     const addTag = () => {
         if (inputValue.trim() && !tags.includes(inputValue.trim())) {
@@ -996,7 +1152,7 @@ const TagEditor = ({ student, onClose, onSave }) => {
                 initial={{ scale: 0.95, opacity: 0, y: 20 }}
                 animate={{ scale: 1, opacity: 1, y: 0 }}
                 onClick={(e) => e.stopPropagation()}
-                className="clay-card p-0 max-w-4xl w-full relative flex flex-col md:flex-row overflow-hidden shadow-2xl h-[90vh] md:h-auto"
+                className="clay-card p-0 max-w-6xl w-full relative flex flex-col md:flex-row overflow-hidden shadow-2xl h-[90vh] md:h-[85vh] md:max-h-[800px]"
             >
                 {/* Close Button Mobile/Desktop */}
                 <button onClick={onClose} className="absolute top-4 right-4 z-50 text-slate-400 hover:text-rose-500 bg-white/50 backdrop-blur-sm p-2 rounded-full transition-colors">
@@ -1004,7 +1160,7 @@ const TagEditor = ({ student, onClose, onSave }) => {
                 </button>
 
                 {/* Left: Photo Zoom Area */}
-                <div className="w-full md:w-1/2 bg-indigo-50 relative flex items-center justify-center overflow-hidden group min-h-[40vh] md:min-h-[500px]">
+                <div className="w-full md:w-[45%] lg:w-[40%] bg-indigo-50 relative flex items-center justify-center overflow-hidden group min-h-[30vh] md:min-h{full">
                     <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-purple-500/5 z-0" />
 
                     {student.photoUrl ? (
@@ -1017,7 +1173,9 @@ const TagEditor = ({ student, onClose, onSave }) => {
                         />
                     ) : (
                         <div className="flex flex-col items-center justify-center text-indigo-200">
-                            <User className="w-32 h-32 mb-4 opacity-50" />
+                            <div className="w-32 h-32 mb-4 bg-white/50 rounded-full flex items-center justify-center backdrop-blur-sm">
+                                <User className="w-16 h-16 opacity-50" />
+                            </div>
                             <p className="font-bold text-lg opacity-60">無照片</p>
                         </div>
                     )}
@@ -1049,9 +1207,10 @@ const TagEditor = ({ student, onClose, onSave }) => {
                 </div>
 
                 {/* Right: Details & Tags */}
-                <div className="w-full md:w-1/2 p-6 md:p-10 flex flex-col bg-white/60 backdrop-blur-xl h-full overflow-y-auto">
+                <div className="w-full md:w-[55%] lg:w-[60%] flex flex-col bg-white/60 backdrop-blur-xl h-full overflow-hidden">
 
-                    <div className="hidden md:block mb-6">
+                    {/* Header (Fixed) */}
+                    <div className="hidden md:block p-6 md:p-10 md:pb-4 flex-shrink-0">
                         <h2 className="text-4xl font-black text-indigo-950 mb-2">{student.name}</h2>
                         <div className="flex items-center gap-3">
                             {student.seatNumber && (
@@ -1063,68 +1222,73 @@ const TagEditor = ({ student, onClose, onSave }) => {
                         </div>
                     </div>
 
-                    {/* AI Description Editor / Result */}
-                    <div className="mb-6">
-                        <h3 className="flex items-center gap-2 text-indigo-800 font-bold text-sm uppercase tracking-wide mb-2">
-                            <Sparkles className="w-4 h-4 text-amber-400" />
-                            AI 記憶口訣
-                        </h3>
-                        <textarea
-                            value={description}
-                            onChange={(e) => setDescription(e.target.value)}
-                            placeholder="點擊左圖「AI 記憶特徵」按鈕，或在此手動輸入特徵..."
-                            className="w-full h-32 p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100 text-indigo-900 font-medium leading-relaxed resize-none focus:bg-white focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 outline-none transition-all placeholder-indigo-300"
-                        />
-                        <AnimatePresence>
-                            {aiError && (
-                                <motion.div
-                                    initial={{ opacity: 0, height: 0 }}
-                                    animate={{ opacity: 1, height: 'auto' }}
-                                    exit={{ opacity: 0, height: 0 }}
-                                    className="p-3 bg-rose-50 text-rose-600 rounded-xl border border-rose-100 text-xs font-bold flex items-center gap-2 mt-2"
-                                >
-                                    <Zap className="w-4 h-4" />
-                                    {aiError}
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-                    </div>
+                    {/* Scrollable Content Body */}
+                    <div className="flex-1 overflow-y-auto px-6 md:px-10 py-2 custom-scrollbar">
+                        {/* AI Description Editor / Result */}
+                        <div className="mb-6 flex-shrink-0">
+                            <h3 className="flex items-center gap-2 text-indigo-800 font-bold text-sm uppercase tracking-wide mb-2">
+                                <Sparkles className="w-4 h-4 text-amber-400" />
+                                AI 記憶口訣
+                            </h3>
+                            <textarea
+                                value={description}
+                                onChange={(e) => setDescription(e.target.value)}
+                                placeholder="點擊左圖「AI 記憶特徵」按鈕，或在此手動輸入特徵..."
+                                className="w-full h-32 md:h-40 p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100 text-indigo-900 font-medium leading-relaxed resize-none focus:bg-white focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 outline-none transition-all placeholder-indigo-300 scrollbar-thin scrollbar-thumb-indigo-200"
+                            />
+                            <AnimatePresence>
+                                {aiError && (
+                                    <motion.div
+                                        initial={{ opacity: 0, height: 0 }}
+                                        animate={{ opacity: 1, height: 'auto' }}
+                                        exit={{ opacity: 0, height: 0 }}
+                                        className="p-3 bg-rose-50 text-rose-600 rounded-xl border border-rose-100 text-xs font-bold flex items-center gap-2 mt-2"
+                                    >
+                                        <Zap className="w-4 h-4" />
+                                        {aiError}
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
 
-                    {/* Tag Input */}
-                    <div className="flex gap-2 mb-4">
-                        <input
-                            type="text"
-                            value={inputValue}
-                            onChange={(e) => setInputValue(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && addTag()}
-                            placeholder="新增特徵標籤 (如: 眼鏡, 短髮)..."
-                            className="clay-input flex-1 !py-3 !text-base"
-                            autoFocus
-                        />
-                        <button onClick={addTag} className="btn-clay btn-clay-primary px-4 rounded-xl font-black aspect-square flex items-center justify-center">
-                            <Plus className="w-6 h-6" />
-                        </button>
-                    </div>
+                        {/* Tag Input */}
+                        <div className="flex gap-2 mb-4 flex-shrink-0">
+                            <input
+                                type="text"
+                                value={inputValue}
+                                onChange={(e) => setInputValue(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && addTag()}
+                                placeholder="新增特徵標籤 (如: 眼鏡, 短髮)..."
+                                className="clay-input flex-1 !py-3 !text-base"
+                                autoFocus
+                            />
+                            <button onClick={addTag} className="btn-clay btn-clay-primary px-4 rounded-xl font-black aspect-square flex items-center justify-center">
+                                <Plus className="w-6 h-6" />
+                            </button>
+                        </div>
 
-                    <div className="flex-1 min-h-[120px] mb-6 p-4 bg-white/40 rounded-2xl border-2 border-white/50 shadow-inner overflow-y-auto">
-                        <div className="flex flex-wrap gap-2">
-                            {tags.length > 0 ? tags.map(tag => (
-                                <span key={tag} className="px-4 py-2 bg-white text-indigo-600 rounded-xl font-bold flex items-center gap-2 shadow-sm border border-indigo-50 hover:scale-105 transition-transform">
-                                    {tag}
-                                    <button onClick={() => removeTag(tag)} className="text-indigo-300 hover:text-rose-500 transition-colors">
-                                        <XCircle className="w-4 h-4" />
-                                    </button>
-                                </span>
-                            )) : (
-                                <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 gap-2 opacity-60 py-8">
-                                    <Tag className="w-8 h-8" />
-                                    <p className="text-sm font-medium">尚無標籤，請新增特徵</p>
-                                </div>
-                            )}
+                        {/* Tag List */}
+                        <div className="min-h-[120px] mb-6 p-4 bg-white/40 rounded-2xl border-2 border-white/50 shadow-inner">
+                            <div className="flex flex-wrap gap-2">
+                                {tags.length > 0 ? tags.map(tag => (
+                                    <span key={tag} className="px-4 py-2 bg-white text-indigo-600 rounded-xl font-bold flex items-center gap-2 shadow-sm border border-indigo-50 hover:scale-105 transition-transform">
+                                        {tag}
+                                        <button onClick={() => removeTag(tag)} className="text-indigo-300 hover:text-rose-500 transition-colors">
+                                            <XCircle className="w-4 h-4" />
+                                        </button>
+                                    </span>
+                                )) : (
+                                    <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 gap-2 opacity-60 py-8">
+                                        <Tag className="w-8 h-8" />
+                                        <p className="text-sm font-medium">尚無標籤，請新增特徵</p>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
 
-                    <div className="flex gap-4 mt-auto pt-4 md:pt-0">
+                    {/* Footer Buttons (Fixed) */}
+                    <div className="p-6 md:p-10 md:pt-4 flex gap-4 flex-shrink-0 bg-gradient-to-t from-white/40 via-white/40 to-transparent">
                         <button onClick={onClose} className="flex-1 py-4 font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors">取消</button>
                         <button onClick={() => onSave(tags, description)} className="btn-clay btn-clay-primary flex-[2] py-4 text-lg shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all">儲存變更</button>
                     </div>

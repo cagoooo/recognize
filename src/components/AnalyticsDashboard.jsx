@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
     LineChart,
     Line,
@@ -12,9 +12,11 @@ import {
     Cell
 } from 'recharts';
 import { motion } from 'framer-motion';
-import { Trophy, TrendingUp, AlertCircle, Sparkles } from 'lucide-react';
+import { Trophy, TrendingUp, AlertCircle, Sparkles, Share2 } from 'lucide-react';
+import SocialShareCard from './SocialShareCard';
 
 const AnalyticsDashboard = ({ scores, students }) => {
+    const [showShareCard, setShowShareCard] = useState(false);
     // 1. 計算成長趨勢 (取最近 10 筆)
     const growthData = useMemo(() => {
         if (!scores || scores.length === 0) return [];
@@ -60,14 +62,25 @@ const AnalyticsDashboard = ({ scores, students }) => {
                 animate={{ opacity: 1, y: 0 }}
                 className="clay-card p-8 bg-white/80 backdrop-blur-sm"
             >
-                <div className="flex items-center gap-3 mb-6">
-                    <div className="p-3 bg-indigo-100 rounded-xl text-indigo-600">
-                        <TrendingUp className="w-6 h-6" />
+                <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                        <div className="p-3 bg-indigo-100 rounded-xl text-indigo-600">
+                            <TrendingUp className="w-6 h-6" />
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-black text-indigo-950">成長趨勢</h3>
+                            <p className="text-slate-400 text-xs font-bold uppercase tracking-wider">Recent Performance</p>
+                        </div>
                     </div>
-                    <div>
-                        <h3 className="text-xl font-black text-indigo-950">成長趨勢</h3>
-                        <p className="text-slate-400 text-xs font-bold uppercase tracking-wider">Recent Performance</p>
-                    </div>
+                    {scores && scores.length > 0 && (
+                        <button
+                            onClick={() => setShowShareCard(true)}
+                            className="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 p-2 rounded-full transition-colors"
+                            title="分享最新戰績"
+                        >
+                            <Share2 className="w-5 h-5" />
+                        </button>
+                    )}
                 </div>
 
                 <div className="h-[300px] w-full">
@@ -153,7 +166,20 @@ const AnalyticsDashboard = ({ scores, students }) => {
                     </div>
                 )}
             </motion.div>
-        </div>
+
+
+            {/* Social Share Modal */}
+            {
+                showShareCard && scores && scores.length > 0 && (
+                    <SocialShareCard
+                        score={scores[0].score} // Assuming scores are sorted desc
+                        total={10} // GameMode is hardcoded to 10
+                        className="自主特訓"
+                        onClose={() => setShowShareCard(false)}
+                    />
+                )
+            }
+        </div >
     );
 };
 

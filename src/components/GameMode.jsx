@@ -9,10 +9,15 @@ import {
     XCircle,
     Heart,
     Sparkles,
-    Loader2
+    Loader2,
+    Volume2,
+    VolumeX
 } from 'lucide-react';
 import { useRecognitionStats } from '../hooks/useRecognitionStats';
 import { generateMemoryAnchor } from '../lib/gemini';
+import { useVoiceCoach } from '../hooks/useVoiceCoach';
+import SocialShareCard from './SocialShareCard';
+import { Share2 } from 'lucide-react';
 
 const GameMode = ({ students, className, onBack }) => {
     const [currentQuestion, setCurrentQuestion] = useState(null);
@@ -26,7 +31,11 @@ const GameMode = ({ students, className, onBack }) => {
     const [isAiLoading, setIsAiLoading] = useState(false);
     const [combo, setCombo] = useState(0);
     const [maxCombo, setMaxCombo] = useState(0);
+
     const [detailedResults, setDetailedResults] = useState([]);
+    const [autoPlay, setAutoPlay] = useState(false);
+    const [showShareCard, setShowShareCard] = useState(false);
+    const { speak, cancel, speaking, isSupported } = useVoiceCoach();
 
     useEffect(() => {
         generateQuestion();
@@ -48,13 +57,16 @@ const GameMode = ({ students, className, onBack }) => {
         setFeedback(null);
         setStartTime(Date.now());
 
-        // 觸發 AI 記憶錨點
         if (correct.photoUrl) {
             setAiHint(null);
             setIsAiLoading(true);
             generateMemoryAnchor(correct.photoUrl).then(hint => {
                 setAiHint(hint);
                 setIsAiLoading(false);
+                // Auto-play hint if enabled
+                if (autoPlay && hint) {
+                    speak(hint);
+                }
             });
         }
     };
@@ -77,9 +89,13 @@ const GameMode = ({ students, className, onBack }) => {
                 return newCombo;
             });
             setFeedback('correct');
+            // Auto-speak name on correct answer
+            if (autoPlay) speak(`正確！這是 ${currentQuestion.name}`);
         } else {
             setCombo(0);
             setFeedback('wrong');
+            // Auto-speak on wrong answer? Maybe just the name
+            if (autoPlay) speak(`可惜，這是 ${currentQuestion.name}`);
         }
         setTotalQuestions(prev => prev + 1);
         setTimeout(() => { generateQuestion(); }, 1500);
@@ -120,9 +136,23 @@ const GameMode = ({ students, className, onBack }) => {
                             </p>
                         </div>
                     </div>
-                    <button onClick={onBack} className="btn-clay btn-clay-primary w-full py-6 text-xl">
-                        返回總部基地
-                    </button>
+                    <div className="flex gap-4 w-full">
+                        <button onClick={onBack} className="btn-clay btn-clay-primary flex-1 py-6 text-xl">
+                            返回總部基地
+                        </button>
+                        <button onClick={() => setShowShareCard(true)} className="btn-clay bg-indigo-50 text-indigo-600 flex-1 py-6 text-xl flex items-center justify-center gap-2">
+                            <Share2 className="w-6 h-6" /> 分享
+                        </button>
+                    </div>
+
+                    {showShareCard && (
+                        <SocialShareCard
+                            score={score}
+                            total={10}
+                            className={className}
+                            onClose={() => setShowShareCard(false)}
+                        />
+                    )}
                 </div>
             </motion.div>
         );
@@ -139,10 +169,22 @@ const GameMode = ({ students, className, onBack }) => {
                         <Timer className="w-5 h-5 text-indigo-400" />
                         <span className="text-sm">問題 {totalQuestions + 1} <span className="text-slate-300">/ 10</span></span>
                     </div>
-                    <div className="stats-pill bg-indigo-600 !border-indigo-500 !text-white shadow-indigo-200">
-                        <Trophy className="w-5 h-5 text-yellow-300 fill-yellow-300" />
-                        <span className="text-sm font-black">{score}</span>
+                    <div className="stats-pill !bg-indigo-600 !border-indigo-400 !text-white shadow-lg shadow-indigo-200/50">
+                        <Trophy className="w-5 h-5 text-yellow-300 fill-yellow-300 drop-shadow-sm" />
+                        <div className="flex flex-col items-start leading-none">
+                            <span className="text-[10px] text-indigo-200 font-bold uppercase tracking-wider">SCORE</span>
+                            <span className="text-xl font-black">{score}</span>
+                        </div>
                     </div>
+                    {isSupported && (
+                        <button
+                            onClick={() => setAutoPlay(!autoPlay)}
+                            className={`stats-pill transition-all ${autoPlay ? '!bg-indigo-500 !text-white !border-indigo-400' : 'bg-white/50'}`}
+                            title={autoPlay ? "關閉語音教練" : "開啟語音教練"}
+                        >
+                            {autoPlay ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5 text-indigo-300" />}
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -190,8 +232,11 @@ const GameMode = ({ students, className, onBack }) => {
                         <Heart className="w-4 h-4 text-rose-500 fill-rose-500 animate-pulse" />
                         <span className="text-[10px] font-black text-rose-400 uppercase tracking-widest">Question Mastery</span>
                     </div>
-                    <h3 className="text-3xl font-black text-indigo-950 mb-3 px-4">
+                    <h3 className="text-3xl font-black text-indigo-950 mb-3 px-4 flex items-center justify-center gap-3">
                         這位學生的姓名是？
+                        <button onClick={() => speak(currentQuestion.name)} className="p-2 rounded-full bg-indigo-50 hover:bg-indigo-100 text-indigo-400 transition-colors">
+                            <Volume2 className="w-5 h-5" />
+                        </button>
                     </h3>
 
                     {/* AI 記憶悄悄話 */}
@@ -211,8 +256,15 @@ const GameMode = ({ students, className, onBack }) => {
                                             <Sparkles className="w-4 h-4 text-white" />
                                         )}
                                     </div>
-                                    <div className="text-left">
-                                        <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">AI 記憶悄悄話</p>
+                                    <div className="text-left flex-1">
+                                        <div className="flex items-center justify-between mb-1">
+                                            <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">AI 記憶悄悄話</p>
+                                            {!isAiLoading && aiHint && (
+                                                <button onClick={() => speak(aiHint)} className="ml-2 p-1.5 rounded-full bg-indigo-50 hover:bg-indigo-100 text-indigo-400 transition-colors">
+                                                    <Volume2 className="w-3 h-3" />
+                                                </button>
+                                            )}
+                                        </div>
                                         <p className="text-sm font-bold text-indigo-950 leading-relaxed">
                                             {isAiLoading ? 'Gemini 正在仔細觀察特徵中...' : aiHint}
                                         </p>

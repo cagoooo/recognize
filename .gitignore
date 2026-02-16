@@ -9,3 +9,10 @@ coverage
 .idea
 temp_*.jsx
 src/temp_*.jsx
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
