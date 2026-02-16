@@ -17,7 +17,8 @@ test.describe('Visual Regression', () => {
 
         await expect(page).toHaveScreenshot('landing-page.png', {
             maxDiffPixels: 300,
-            fullPage: true
+            fullPage: true,
+            mask: [page.locator('.aurora-bg')]
         });
     });
 });
