@@ -411,6 +411,17 @@ body {
   box-shadow: var(--clay-btn-shadow), 0 20px 40px rgba(249, 115, 22, 0.5);
 }
 
+.btn-clay-rose {
+  background: linear-gradient(135deg, #f43f5e, #fb7185);
+  color: white;
+  box-shadow: var(--clay-btn-shadow), 0 10px 25px rgba(244, 63, 94, 0.3);
+}
+
+.btn-clay-rose:hover {
+  transform: translateY(-6px) scale(1.03);
+  box-shadow: var(--clay-btn-shadow), 0 20px 40px rgba(244, 63, 94, 0.5);
+}
+
 .nav-capsule {
   display: flex;
   align-items: center;
@@ -800,24 +811,6 @@ body {
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
-}
-
-.custom-scrollbar::-webkit-scrollbar {
-  width: 8px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.4);
-  border-radius: 10px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(79, 70, 229, 0.3);
-  border-radius: 10px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(79, 70, 229, 0.6);
 }
 
 .clay-pill {
