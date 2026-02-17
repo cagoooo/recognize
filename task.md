@@ -1,0 +1,138 @@
+# Tasks
+
+- [x] 📊 Analytics Dashboard (師生互動數據儀表板) <!-- id: 0 -->
+    - [x] Design data model for specific student recognition stats <!-- id: 1 -->
+    - [x] Update `useRecognitionStats` to record detailed results <!-- id: 2 -->
+    - [x] Create `AnalyticsDashboard` component using Recharts <!-- id: 3 -->
+    - [x] Visualize "Difficulty Index" (辨認難易度指數) <!-- id: 4 -->
+- [x] 🏷️ Smart Auto-tagging (智慧自動標籤) <!-- id: 5 -->
+    - [x] Design tag schema (gender, glasses, hair, etc.) <!-- id: 6 -->
+    - [x] Implement tagging logic (manual tagging with UI) <!-- id: 7 -->
+    - [x] Add filtering by tags in the practice mode <!-- id: 8 -->
+    - [x] 🎨 Optimize Search & Tag Filter UI (RWD & Colorful) <!-- id: 13 -->
+    - [x] 📂 Optimize Batch Import UI (Grid & Card Style) <!-- id: 14 -->
+    - [x] ➕ Optimize Add Student UI (Vibrant Indigo Card) <!-- id: 15 -->
+    - [x] 👥 Optimize Student List UI (Premium Floating Cards) <!-- id: 16 -->
+    - [x] 📱 Optimize Student Grid Density (Fluid Auto-fill) <!-- id: 17 -->
+    - [x] 🏫 Optimize Class Management UI (Vibrant Dashboard) <!-- id: 18 -->
+    - [x] 🎓 Optimize Header & Profile UI (Glassmorphic Nav) <!-- id: 19 -->
+- [ ] 🤖 AI Memory Anchors (AI 記憶口訣) <!-- id: 20 -->
+    - [x] Integrate Gemini Vision API (Multimodal) <!-- id: 21 -->
+    - [x] Implement `useGeminiVision` Hook <!-- id: 26 -->
+    - [x] Add "✨ Generate" button to Student Details Modal <!-- id: 27 -->
+    - [x] Store AI descriptions in Firestore (`fstore` schema update) <!-- id: 28 -->
+    - [x] Implement caching for AI responses <!-- id: 22 -->
+    - [x] detailed prompt engineering for memory aids <!-- id: 23 -->
+- [x] 📱 Offline Cache Optimization (離線快取優化) <!-- id: 24 -->
+    - [x] Configure `vite-plugin-pwa` for asset caching <!-- id: 25 -->
+    - [x] Implement runtime caching for Firebase Storage images <!-- id: 28 -->
+- [x] 🎨 Optimize Profile Dropdown UI (Vibrant & RWD) <!-- id: 29 -->
+    - [x] Create `btn-clay-dropdown` styles in `index.css` <!-- id: 30 -->
+    - [x] Update `App.jsx` to use new vibrant buttons <!-- id: 31 -->
+    - [x] Ensure dropdown is responsive on small screens <!-- id: 32 -->
+- [x] ℹ️ Optimize Import UX (Detailed Instructions) <!-- id: 33 -->
+    - [x] Add format guide for Excel/CSV import <!-- id: 34 -->
+    - [x] Add filename guide for Batch Photo Upload <!-- id: 35 -->
+    - [x] Use collapsible/modal UI to avoid clutter <!-- id: 36 -->
+- [x] 🎨 Optimize Import Visuals (Clay & RWD) <!-- id: 37 -->
+    - [x] Button Polish (`.btn-glass-pill`, `.btn-square-danger`)
+- [x] Input Optimization (`.clay-input-primary`)
+- [x] Stats View Optimization (`.clay-pill`, RWD Container)
+- [x] Hero Section Optimization (Pro Max)
+    - [x] Dynamic Aurora Background
+    - [x] Interactive 3D Elements
+    - [x] Typography Upgrade
+    - [x] Mobile RWD Check
+- [x] Refine Hero Section RWD
+    - [x] Typography `clamp()` scaling
+    - [x] Responsive Layout & Spacing
+    - [x] 3D Element Scaling
+    - [x] Fix Layout Overlap (Adjust `pt` for Fixed Header)
+    - [x] **Fix Header Overlap**: Increased top padding (`pt-48 md:pt-64`) to prevent logo collision.
+    - [x] **Fix Dashboard Overlap**: Added `mt-32` to Dashboard container to clear fixed header.
+    - [x] Fix CSS Import Order (Move Fonts to HTML)
+- [x] Optimize Back Button UI
+    - [x] Apply `.btn-glass-pill` style
+    - [x] Ensure full width and RWD spacing
+    - [x] Add hover effects
+    - [x] **Fix Overlap**: Align button to left start to avoid collision with fixed header.
+- [x] **Optimize Score Visibility**: Enhance content contrast in GameMode (Trophy Pill).
+- [x] Optimize Search Bar UI
+    - [x] Install & Configure Tailwind CSS v4
+        - [x] Migrate to `@tailwindcss/vite` plugin (Fixed PostCSS conflict)
+        - [x] Remove `postcss.config.js` and `autoprefixer`
+        - [x] Convert `index.css` to `@import "tailwindcss";`
+    - [x] Responsive Height & Padding
+    - [x] Dynamic Font Size
+    - [x] Enhanced Focus Glow
+
+# Phase 3.1: Intelligent Features & Stability (Now)
+- [x] **Auto-Tagging Pipeline**
+    - [x] Modify Gemini prompt to return JSON with `description` and `tags`
+    - [x] Update `useGeminiVision` hook to parse JSON response
+    - [x] Integrate with `TagEditor` to automatically add tags
+    - [x] Test with various student photos
+- [x] **Visual Regression Testing**
+    - [x] Install Playwright
+    - [x] Create baseline screenshots for Home (Landing Page)
+    - [x] Implement comparison script (via Playwright Test)
+- [x] **PWA Hardening (Offline Support)**
+    - [x] Configure `vite-plugin-pwa` for runtime caching
+    - [x] Implement CacheFirst strategy for images and fonts
+    - [x] Verify offline mode functionality (via config check)
+- [x] **Smart Grouping Assistant**
+    - [x] Create `grouping.js` utility
+    - [x] Implement "Heterogeneous" and "Interest-based" algorithms
+    - [x] Build Grouping UI in Class Manager
+- [x] 🎨 Optimize Student Grid UI (Pro Max)
+    - [x] **Colorful Placeholders**: Replace white bg with soft gradients.
+    - [x] **Glassmorphic Cards**: Increase contrast and add `border-indigo-100`.
+    - [x] **Typography**: Make seat numbers and names more legible.
+    - [x] **RWD**: Adjust grid density to `minmax(160px, 1fr)`.
+    - [x] **Hover Effects**: Stronger shadow and scale.
+- [x] 🎨 Optimize Import Buttons (Compact Pro Max)
+    - [x] **Remove Oversized Dimensions**: Reset `aspect-ratio` and `min-height`.
+    - [x] **Horizontal Layout**: Switch to `flex-row` for space efficiency.
+    - [x] **Adjust Padding & Icons**: Reduce to `p-6` and `w-8 h-8`.
+- [x] 🎨 Student Grid Polish (Fix Overlap)
+    - [x] **Z-Index**: Ensure text overlay is above image/icon.
+    - [x] **Spacing**: Shift placeholder up to avoid blocking text.
+- [x] 🐛 Fix Runtime Errors
+    - [x] **XCircle is not defined**: Add missing import in `App.jsx`.
+- [x] 🎨 Student Photo Zoom (Interactive Modal)
+    - [x] **Enhance TagEditor**: Add large photo display area.
+    - [x] **Layout**: Split into Photo (Top/Left) and Tagger (Bottom/Right).
+    - [x] **Visuals**: Use `backdrop-blur-xl` and shadow for depth.
+    - [x] **Desktop Optimization**: Maximize width/height & refine column ratios (40/60).
+    - [x] Refactor instruction text into glassmorphic cards <!-- id: 39 -->
+    - [x] Ensure mobile responsiveness for import section <!-- id: 40 -->
+    - [x] Implement "Combo" (consecutive correct) visual effects <!-- id: 10 -->
+    - [x] Create "Memory Master" (記憶大師) achievement system <!-- id: 11 -->
+    - [x] Add class competition leaderboard <!-- id: 12 -->
+
+# Phase 4: Advanced Interaction & Social (Now)
+- [x] 🗣️ Voice Coach (語音記憶教練) <!-- id: 50 -->
+    - [x] Create `useVoiceCoach` hook (SpeechSynthesis) <!-- id: 51 -->
+    - [x] Add "Auto-play" toggle in Game Mode <!-- id: 52 -->
+    - [x] Implement "Read Name & Mnemonic" logic <!-- id: 53 -->
+- [x] 📱 Social Review Cards (社交分享卡片) <!-- id: 54 -->
+    - [x] Install `html2canvas` <!-- id: 55 -->
+    - [x] Design "Share Card" component (OgImage style) <!-- id: 56 -->
+    - [x] Implement "Download/Share" action in Analytics & Game Result <!-- id: 57 -->
+
+- [x] 🎨 Enhance TagEditor UI (Pro Max & RWD) <!-- id: 58 -->
+    - [x] Apply Claymorphism to Mnemonic & Tag sections <!-- id: 59 -->
+    - [x] Optimize Mobile Layout (Backdrop, Spacing) <!-- id: 70 -->
+    - [x] Add vibrant gradients and icons <!-- id: 71 -->
+
+# Phase 5: AI Ecosystem & Intelligence (Next)
+- [ ] 🤖 AI Classroom Coach (AI 虛擬班級教練) <!-- id: 60 -->
+    - [ ] Setup Firebase Cloud Functions environment <!-- id: 61 -->
+    - [ ] Create `generateWeeklyReport` function <!-- id: 62 -->
+    - [ ] Design Gemini Prompt for teaching advice <!-- id: 63 -->
+    - [ ] Implement Notification UI in Dashboard <!-- id: 64 -->
+- [ ] 🌐 Teacher Tools Hub (跨平台教具整合) <!-- id: 65 -->
+    - [ ] Design RESTful API for student data <!-- id: 66 -->
+    - [ ] Implement API Key generation in Settings <!-- id: 67 -->
+    - [ ] Create API Documentation <!-- id: 68 -->
+
