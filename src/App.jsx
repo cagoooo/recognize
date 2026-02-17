@@ -266,18 +266,23 @@ const Dashboard = ({ onNavigate }) => (
         <motion.div
             whileHover={{ y: -12, scale: 1.01 }}
             onClick={() => onNavigate('play')}
-            className="clay-card clay-card-indigo border-none flex flex-col items-center cursor-pointer group max-w-md w-full mx-auto relative overflow-hidden glow-primary"
+            className="clay-card clay-card-challenge border-none flex flex-col items-center cursor-pointer group max-w-md w-full mx-auto relative overflow-hidden"
         >
-            <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-white/20 to-transparent opacity-40 pointer-events-none" />
-            <div className="relative z-10 flex flex-col items-center">
-                <div className="card-icon-box bg-white/20 backdrop-blur-md border-4 border-white/20">
-                    <Target className="text-white w-12 h-12" />
+            <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 mix-blend-overlay pointer-events-none" />
+            <div className="relative z-10 flex flex-col items-center w-full">
+                <div className="card-icon-box bg-white/20 backdrop-blur-md border-4 border-white/20 shadow-lg group-hover:scale-110 group-hover:rotate-12 transition-transform duration-500">
+                    <Target className="text-white w-12 h-12 drop-shadow-md" />
                 </div>
-                <h3 className="text-4xl font-black text-white mb-4">挑戰辨認</h3>
-                <p className="text-indigo-100 font-bold mb-10 text-base opacity-80">高強度視覺訓練</p>
-                <div className="bg-white text-indigo-600 px-12 py-5 rounded-[28px] font-black shadow-2xl flex items-center gap-2 group-hover:bg-indigo-50 transition-all group-hover:scale-105">
-                    立即啟動 <ChevronRight className="w-6 h-6" />
-                </div>
+                <h3 className="text-5xl font-black text-white mb-2 drop-shadow-lg tracking-tight">挑戰辨認</h3>
+                <div className="h-1 w-24 bg-white/30 rounded-full mb-4 group-hover:w-32 transition-all duration-500" />
+                <p className="text-indigo-100 font-bold mb-10 text-lg opacity-90 tracking-wider">高強度視覺訓練</p>
+
+                <button className="bg-white text-indigo-700 px-14 py-6 rounded-[32px] font-black text-xl shadow-2xl flex items-center gap-3 group-hover:bg-indigo-50 transition-all group-hover:scale-105 group-hover:shadow-[0_0_40px_rgba(255,255,255,0.6)] relative overflow-hidden">
+                    <span className="relative z-10 flex items-center gap-2">
+                        立即啟動 <ChevronRight className="w-6 h-6 animate-bounce-x" />
+                    </span>
+                    <div className="absolute inset-0 bg-gradient-to-r from-indigo-50 via-white to-indigo-50 opacity-0 group-hover:opacity-50 transition-opacity" />
+                </button>
             </div>
         </motion.div>
 
