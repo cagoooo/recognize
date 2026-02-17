@@ -802,27 +802,41 @@ const StudentManager = ({ cls, onBack, onStartGame }) => {
 
                 <div className="flex-1 flex flex-col gap-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Excel Card */}
-                        <label className="clay-upload-card clay-upload-emerald group">
+                        {/* Excel Card - Vibrant Green */}
+                        <label className="clay-card clay-card-green group cursor-pointer p-8 flex flex-col items-center justify-center gap-4 h-full min-h-[220px]">
                             <input type="file" className="hidden" onChange={handleFileUpload} accept=".xlsx, .xls, .csv" />
-                            <div className="icon-box text-emerald-600 group-hover:bg-emerald-500 group-hover:text-white transition-colors">
-                                <FileSpreadsheet className="w-8 h-8" />
+
+                            <div className="w-20 h-20 bg-emerald-100 rounded-3xl flex items-center justify-center shadow-inner group-hover:scale-110 group-hover:rotate-6 transition-transform duration-500 relative z-10">
+                                <FileSpreadsheet className="w-10 h-10 text-emerald-600 group-hover:text-emerald-500" />
                             </div>
-                            <div className="flex flex-col items-start gap-1">
-                                <h3 className="text-xl font-black text-emerald-950">匯入名單</h3>
-                                <p className="text-[10px] font-bold text-emerald-600/70 uppercase tracking-widest bg-white/50 px-2 py-1 rounded-md">Excel / CSV</p>
+
+                            <div className="text-center relative z-10">
+                                <h3 className="text-2xl font-black text-emerald-900 group-hover:text-emerald-700 transition-colors">匯入名單</h3>
+                                <p className="text-emerald-600/80 font-bold text-xs uppercase tracking-widest mt-2 bg-white/60 px-3 py-1 rounded-full">Excel / CSV</p>
+                            </div>
+
+                            {/* Hover Decorative Icon */}
+                            <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-20 transition-opacity duration-500 transform translate-x-4 group-hover:translate-x-0">
+                                <Sparkles className="w-12 h-12 text-emerald-500" />
                             </div>
                         </label>
 
-                        {/* Photo Card */}
-                        <label className="clay-upload-card clay-upload-blue group">
+                        {/* Photo Card - Vibrant Sky Blue */}
+                        <label className="clay-card clay-card-sky group cursor-pointer p-8 flex flex-col items-center justify-center gap-4 h-full min-h-[220px]">
                             <input type="file" className="hidden" onChange={handlePhotoUpload} accept="image/*" multiple />
-                            <div className="icon-box text-blue-600 group-hover:bg-blue-500 group-hover:text-white transition-colors">
-                                <Images className="w-8 h-8" />
+
+                            <div className="w-20 h-20 bg-sky-100 rounded-3xl flex items-center justify-center shadow-inner group-hover:scale-110 group-hover:-rotate-6 transition-transform duration-500 relative z-10">
+                                <Images className="w-10 h-10 text-sky-600 group-hover:text-sky-500" />
                             </div>
-                            <div className="flex flex-col items-start gap-1">
-                                <h3 className="text-xl font-black text-blue-950">匯入照片</h3>
-                                <p className="text-[10px] font-bold text-blue-600/70 uppercase tracking-widest bg-white/50 px-2 py-1 rounded-md">Batch Upload</p>
+
+                            <div className="text-center relative z-10">
+                                <h3 className="text-2xl font-black text-sky-900 group-hover:text-sky-700 transition-colors">匯入照片</h3>
+                                <p className="text-sky-600/80 font-bold text-xs uppercase tracking-widest mt-2 bg-white/60 px-3 py-1 rounded-full">Batch Upload</p>
+                            </div>
+
+                            {/* Hover Decorative Icon */}
+                            <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-20 transition-opacity duration-500 transform translate-x-4 group-hover:translate-x-0">
+                                <Camera className="w-12 h-12 text-sky-500" />
                             </div>
                         </label>
                     </div>
