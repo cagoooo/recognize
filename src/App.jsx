@@ -799,14 +799,12 @@ const StudentManager = ({ cls, onBack, onStartGame }) => {
                                     <span className="animate-pulse">上傳中...</span>
                                 ) : (
                                     <>
-                                        <div className="bg-indigo-100 p-2 rounded-xl">
+                                        <div className="bg-indigo-100 p-2 rounded-xl relative z-10">
                                             <UserPlus className="w-6 h-6 text-indigo-600" />
                                         </div>
-                                        <span>確認加入</span>
+                                        <span className="relative z-10">確認加入</span>
                                     </>
                                 )}
-                            </button>
-
                                 <div className="absolute inset-0 bg-gradient-to-r from-indigo-50 via-white to-indigo-50 opacity-0 group-hover/btn:opacity-50 transition-opacity duration-500" />
                             </button>
                         </form>
@@ -972,121 +970,121 @@ const StudentManager = ({ cls, onBack, onStartGame }) => {
                 ))}
             </div>
 
-            {/* Grouping Modal */ }
-    <AnimatePresence>
-        {showGroupingModal && (
-            <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4" onClick={() => setShowGroupingModal(false)}>
-                <motion.div
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.9, opacity: 0 }}
-                    onClick={(e) => e.stopPropagation()}
-                    className="bg-white/90 backdrop-blur-xl rounded-[40px] p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-white/50"
-                >
-                    <div className="flex justify-between items-center mb-8">
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 bg-indigo-100 rounded-2xl flex items-center justify-center text-indigo-600">
-                                <Users className="w-6 h-6" />
-                            </div>
-                            <div>
-                                <h3 className="text-2xl font-black text-indigo-950">智慧分組助手</h3>
-                                <p className="text-indigo-400 font-bold text-sm">Smart Grouping</p>
-                            </div>
-                        </div>
-                        <button onClick={() => setShowGroupingModal(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
-                            <XCircle className="w-8 h-8 text-slate-400" />
-                        </button>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                        <div className="clay-card p-4 bg-indigo-50/50">
-                            <label className="text-sm font-bold text-indigo-400 uppercase tracking-wider mb-2 block">分組策略</label>
-                            <select
-                                value={groupingStrategy}
-                                onChange={(e) => setGroupingStrategy(e.target.value)}
-                                className="w-full bg-white border-2 border-indigo-100 rounded-xl px-4 py-2 font-bold text-indigo-900 outline-none focus:border-indigo-400"
-                            >
-                                <option value="random">🎲 隨機分組</option>
-                                <option value="hetero">⚡ 異質分組 (強弱混合)</option>
-                                <option value="interest">❤️ 興趣分組 (同標籤)</option>
-                            </select>
-                        </div>
-                        <div className="clay-card p-4 bg-indigo-50/50">
-                            <label className="text-sm font-bold text-indigo-400 uppercase tracking-wider mb-2 block">每組人數</label>
-                            <input
-                                type="number"
-                                min="2"
-                                max="10"
-                                value={groupSize}
-                                onChange={(e) => setGroupSize(parseInt(e.target.value))}
-                                className="w-full bg-white border-2 border-indigo-100 rounded-xl px-4 py-2 font-bold text-indigo-900 outline-none focus:border-indigo-400"
-                            />
-                        </div>
-                        <button
-                            onClick={handleGroup}
-                            className="btn-clay bg-indigo-600 text-white flex items-center justify-center gap-2 shadow-lg hover:scale-105 active:scale-95 transition-all"
+            {/* Grouping Modal */}
+            <AnimatePresence>
+                {showGroupingModal && (
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4" onClick={() => setShowGroupingModal(false)}>
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="bg-white/90 backdrop-blur-xl rounded-[40px] p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-white/50"
                         >
-                            <Sparkles className="w-5 h-5" />
-                            <span className="text-lg">開始分組</span>
-                        </button>
-                    </div>
-
-                    {/* Results */}
-                    {groups.length > 0 && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {groups.map((group, idx) => (
-                                <div key={idx} className="clay-card p-4 border-2 border-indigo-50 hover:border-indigo-200 transition-colors">
-                                    <div className="flex justify-between items-center mb-4 pb-2 border-b border-indigo-50">
-                                        <h4 className="font-black text-indigo-900 text-lg">第 {idx + 1} 組</h4>
-                                        <span className="bg-indigo-100 text-indigo-600 px-2 py-1 rounded-lg text-xs font-bold">{group.length} 人</span>
+                            <div className="flex justify-between items-center mb-8">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 bg-indigo-100 rounded-2xl flex items-center justify-center text-indigo-600">
+                                        <Users className="w-6 h-6" />
                                     </div>
-                                    <div className="flex flex-col gap-2">
-                                        {group.map(student => (
-                                            <div key={student.id} className="flex items-center gap-3 p-2 hover:bg-white rounded-xl transition-colors">
-                                                <img
-                                                    src={student.photoUrl || `https://api.dicebear.com/7.x/fun-emoji/svg?seed=${student.name}`}
-                                                    className="w-8 h-8 rounded-full object-cover bg-indigo-50"
-                                                    alt=""
-                                                />
-                                                <span className="font-bold text-slate-700">{student.name}</span>
-                                                {student.tags && student.tags[0] && (
-                                                    <span className="text-xs bg-slate-100 text-slate-500 px-1 rounded ml-auto">{student.tags[0]}</span>
-                                                )}
-                                            </div>
-                                        ))}
+                                    <div>
+                                        <h3 className="text-2xl font-black text-indigo-950">智慧分組助手</h3>
+                                        <p className="text-indigo-400 font-bold text-sm">Smart Grouping</p>
                                     </div>
                                 </div>
-                            ))}
-                        </div>
-                    )}
+                                <button onClick={() => setShowGroupingModal(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+                                    <XCircle className="w-8 h-8 text-slate-400" />
+                                </button>
+                            </div>
 
-                    {groups.length === 0 && (
-                        <div className="text-center py-20 opacity-50">
-                            <Users className="w-16 h-16 mx-auto mb-4 text-slate-300" />
-                            <p className="font-bold text-slate-400 text-xl">點擊「開始分組」產生結果</p>
-                        </div>
-                    )}
-                </motion.div>
-            </div>
-        )}
-    </AnimatePresence>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                                <div className="clay-card p-4 bg-indigo-50/50">
+                                    <label className="text-sm font-bold text-indigo-400 uppercase tracking-wider mb-2 block">分組策略</label>
+                                    <select
+                                        value={groupingStrategy}
+                                        onChange={(e) => setGroupingStrategy(e.target.value)}
+                                        className="w-full bg-white border-2 border-indigo-100 rounded-xl px-4 py-2 font-bold text-indigo-900 outline-none focus:border-indigo-400"
+                                    >
+                                        <option value="random">🎲 隨機分組</option>
+                                        <option value="hetero">⚡ 異質分組 (強弱混合)</option>
+                                        <option value="interest">❤️ 興趣分組 (同標籤)</option>
+                                    </select>
+                                </div>
+                                <div className="clay-card p-4 bg-indigo-50/50">
+                                    <label className="text-sm font-bold text-indigo-400 uppercase tracking-wider mb-2 block">每組人數</label>
+                                    <input
+                                        type="number"
+                                        min="2"
+                                        max="10"
+                                        value={groupSize}
+                                        onChange={(e) => setGroupSize(parseInt(e.target.value))}
+                                        className="w-full bg-white border-2 border-indigo-100 rounded-xl px-4 py-2 font-bold text-indigo-900 outline-none focus:border-indigo-400"
+                                    />
+                                </div>
+                                <button
+                                    onClick={handleGroup}
+                                    className="btn-clay bg-indigo-600 text-white flex items-center justify-center gap-2 shadow-lg hover:scale-105 active:scale-95 transition-all"
+                                >
+                                    <Sparkles className="w-5 h-5" />
+                                    <span className="text-lg">開始分組</span>
+                                </button>
+                            </div>
+
+                            {/* Results */}
+                            {groups.length > 0 && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {groups.map((group, idx) => (
+                                        <div key={idx} className="clay-card p-4 border-2 border-indigo-50 hover:border-indigo-200 transition-colors">
+                                            <div className="flex justify-between items-center mb-4 pb-2 border-b border-indigo-50">
+                                                <h4 className="font-black text-indigo-900 text-lg">第 {idx + 1} 組</h4>
+                                                <span className="bg-indigo-100 text-indigo-600 px-2 py-1 rounded-lg text-xs font-bold">{group.length} 人</span>
+                                            </div>
+                                            <div className="flex flex-col gap-2">
+                                                {group.map(student => (
+                                                    <div key={student.id} className="flex items-center gap-3 p-2 hover:bg-white rounded-xl transition-colors">
+                                                        <img
+                                                            src={student.photoUrl || `https://api.dicebear.com/7.x/fun-emoji/svg?seed=${student.name}`}
+                                                            className="w-8 h-8 rounded-full object-cover bg-indigo-50"
+                                                            alt=""
+                                                        />
+                                                        <span className="font-bold text-slate-700">{student.name}</span>
+                                                        {student.tags && student.tags[0] && (
+                                                            <span className="text-xs bg-slate-100 text-slate-500 px-1 rounded ml-auto">{student.tags[0]}</span>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {groups.length === 0 && (
+                                <div className="text-center py-20 opacity-50">
+                                    <Users className="w-16 h-16 mx-auto mb-4 text-slate-300" />
+                                    <p className="font-bold text-slate-400 text-xl">點擊「開始分組」產生結果</p>
+                                </div>
+                            )}
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
 
 
-    {
-        editingTagsStudent && (
-            <TagEditor
-                student={editingTagsStudent}
-                onClose={() => setEditingTagsStudent(null)}
-                onSave={(tags, description) => {
-                    updateStudentTags(editingTagsStudent.id, tags);
-                    if (description !== undefined) {
-                        updateStudentDescription(editingTagsStudent.id, description);
-                    }
-                    setEditingTagsStudent(null);
-                }}
-            />
-        )
-    }
+            {
+                editingTagsStudent && (
+                    <TagEditor
+                        student={editingTagsStudent}
+                        onClose={() => setEditingTagsStudent(null)}
+                        onSave={(tags, description) => {
+                            updateStudentTags(editingTagsStudent.id, tags);
+                            if (description !== undefined) {
+                                updateStudentDescription(editingTagsStudent.id, description);
+                            }
+                            setEditingTagsStudent(null);
+                        }}
+                    />
+                )
+            }
         </motion.div >
     );
 };
