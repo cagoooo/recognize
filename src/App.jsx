@@ -1121,7 +1121,6 @@ const TagEditor = ({ student, onClose, onSave }) => {
     useEffect(() => {
         if (aiDescription) {
             setDescription(prev => {
-                // Leaf check to avoid duplicate appending if effect runs twice
                 if (prev && prev.includes(aiDescription)) return prev;
                 return prev ? prev + '\n' + aiDescription : aiDescription;
             });
@@ -1130,7 +1129,9 @@ const TagEditor = ({ student, onClose, onSave }) => {
             setTags(prevTags => {
                 const newTags = aiTags.filter(t => !prevTags.includes(t));
                 if (newTags.length === 0) return prevTags;
-                return [...prevTags, ...newTags];
+                const combined = [...prevTags, ...newTags];
+                // Deduplicate just in case
+                return [...new Set(combined)];
             });
         }
     }, [aiDescription, aiTags]);
@@ -1147,153 +1148,198 @@ const TagEditor = ({ student, onClose, onSave }) => {
     };
 
     return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4 transition-all" onClick={onClose}>
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xl z-[99999] flex items-center justify-center p-4 transition-all" onClick={onClose}>
             <motion.div
-                initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                initial={{ scale: 0.9, opacity: 0, y: 30 }}
                 animate={{ scale: 1, opacity: 1, y: 0 }}
                 onClick={(e) => e.stopPropagation()}
-                className="clay-card p-0 max-w-6xl w-full relative flex flex-col md:flex-row overflow-hidden shadow-2xl h-[90vh] md:h-[85vh] md:max-h-[800px]"
+                className="clay-card !p-0 max-w-6xl w-full relative flex flex-col md:flex-row overflow-hidden shadow-2xl h-[90vh] md:h-[85vh]"
             >
                 {/* Close Button Mobile/Desktop */}
-                <button onClick={onClose} className="absolute top-4 right-4 z-50 text-slate-400 hover:text-rose-500 bg-white/50 backdrop-blur-sm p-2 rounded-full transition-colors">
+                <button
+                    onClick={onClose}
+                    className="absolute top-4 right-4 z-50 bg-white/40 hover:bg-white text-indigo-900 backdrop-blur-md p-2 rounded-full transition-all shadow-lg hover:rotate-90 duration-300 border-2 border-white"
+                >
                     <XCircle className="w-8 h-8" />
                 </button>
 
                 {/* Left: Photo Zoom Area */}
-                <div className="w-full md:w-[45%] lg:w-[40%] bg-indigo-50 relative flex items-center justify-center overflow-hidden group min-h-[30vh] md:min-h{full">
-                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-purple-500/5 z-0" />
+                <div className="w-full md:w-[45%] lg:w-[40%] bg-indigo-50/50 relative flex items-center justify-center overflow-hidden group min-h-[35vh] md:min-h-full border-b-4 md:border-b-0 md:border-r-4 border-white">
+                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-purple-500/10 to-pink-500/10 z-0" />
+                    <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-20 z-0 mix-blend-overlay" />
 
                     {student.photoUrl ? (
-                        <img
-                            src={student.photoUrl}
-                            className="w-full h-full object-cover transition-transform duration-700 hover:scale-110 cursor-zoom-in"
-                            alt={student.name}
-                            onClick={() => window.open(student.photoUrl, '_blank')}
-                            title="點擊在新分頁開啟原圖"
-                        />
+                        <div className="relative w-full h-full group-hover:scale-105 transition-transform duration-700 ease-out">
+                            <img
+                                src={student.photoUrl}
+                                className="w-full h-full object-cover"
+                                alt={student.name}
+                                onClick={() => window.open(student.photoUrl, '_blank')}
+                                title="點擊在新分頁開啟原圖"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-indigo-900/60 via-transparent to-transparent opacity-60 md:opacity-30 group-hover:opacity-60 transition-opacity" />
+                        </div>
                     ) : (
-                        <div className="flex flex-col items-center justify-center text-indigo-200">
-                            <div className="w-32 h-32 mb-4 bg-white/50 rounded-full flex items-center justify-center backdrop-blur-sm">
-                                <User className="w-16 h-16 opacity-50" />
+                        <div className="flex flex-col items-center justify-center text-indigo-300">
+                            <div className="w-40 h-40 mb-6 bg-white/40 rounded-full flex items-center justify-center backdrop-blur-xl shadow-clay-card border-4 border-white">
+                                <User className="w-20 h-20 opacity-50" />
                             </div>
-                            <p className="font-bold text-lg opacity-60">無照片</p>
+                            <p className="font-bold text-2xl opacity-80">無照片</p>
                         </div>
                     )}
 
-                    {/* Overlay Info for Photo (Mobile Only) */}
-                    <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/60 to-transparent text-white pt-20 md:hidden pointer-events-none">
-                        <h2 className="text-3xl font-black">{student.name}</h2>
-                        {student.seatNumber && <p className="font-bold opacity-80">#{student.seatNumber}</p>}
+                    {/* Overlay Info (Mobile) */}
+                    <div className="absolute bottom-0 left-0 right-0 p-6 pt-24 text-white md:hidden pointer-events-none z-10">
+                        <h2 className="text-4xl font-black drop-shadow-lg">{student.name}</h2>
+                        {student.seatNumber && <p className="font-bold text-lg opacity-90 drop-shadow-md">#{student.seatNumber}</p>}
                     </div>
 
-                    {/* AI Generate Button (Over Photo) */}
+                    {/* AI Generate Button (Floating) */}
                     {student.photoUrl && (
-                        <div className="absolute bottom-6 right-6 md:bottom-8 md:right-8 z-20">
+                        <div className="absolute bottom-6 right-6 md:bottom-10 md:right-10 z-20">
                             <button
                                 onClick={(e) => { e.stopPropagation(); handleAiGenerate(); }}
                                 disabled={aiLoading}
-                                className={`btn-glass-pill !bg-white/90 !backdrop-blur-xl shadow-lg border-2 border-indigo-100 text-indigo-600 hover:scale-105 transition-all
-                  ${aiLoading ? 'opacity-80 cursor-wait' : ''}`}
+                                className={`
+                                    btn-clay !py-3 !px-6 !rounded-2xl !gap-3 shadow-2xl border-2 border-white/50 backdrop-blur-xl
+                                    ${aiLoading ? 'bg-slate-100 text-slate-400 cursor-wait' : 'bg-white/80 text-indigo-600 hover:bg-white hover:scale-110'}
+                                `}
                             >
                                 {aiLoading ? (
-                                    <div className="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                                    <div className="w-6 h-6 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
                                 ) : (
-                                    <Sparkles className="w-5 h-5 text-amber-400 fill-amber-400" />
+                                    <Sparkles className="w-6 h-6 text-amber-400 fill-amber-400 animate-pulse" />
                                 )}
-                                <span className="font-bold">{aiLoading ? 'AI 觀察中...' : 'AI 記憶特徵'}</span>
+                                <span className="font-black text-lg">{aiLoading ? '分析中...' : 'AI 記憶特徵'}</span>
                             </button>
                         </div>
                     )}
                 </div>
 
                 {/* Right: Details & Tags */}
-                <div className="w-full md:w-[55%] lg:w-[60%] flex flex-col bg-white/60 backdrop-blur-xl h-full overflow-hidden">
+                <div className="w-full md:w-[55%] lg:w-[60%] flex flex-col bg-white/40 backdrop-blur-2xl h-full relative z-10">
 
-                    {/* Header (Fixed) */}
-                    <div className="hidden md:block p-6 md:p-10 md:pb-4 flex-shrink-0">
-                        <h2 className="text-4xl font-black text-indigo-950 mb-2">{student.name}</h2>
-                        <div className="flex items-center gap-3">
+                    {/* Header (Desktop) */}
+                    <div className="hidden md:block p-8 pb-4 flex-shrink-0">
+                        <div className="flex items-center gap-4 mb-2">
                             {student.seatNumber && (
-                                <span className="px-3 py-1 bg-indigo-500 text-white rounded-full text-sm font-bold shadow-md uppercase tracking-wider">
-                                    #{student.seatNumber}
+                                <span className="clay-card !p-2 !px-4 !rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-lg text-xl font-black min-w-[60px] text-center border-2 border-white/20">
+                                    {student.seatNumber}
                                 </span>
                             )}
-                            <span className="text-slate-500 font-bold text-sm">學員詳情 & 標籤管理</span>
+                            <h2 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-900 to-purple-900">{student.name}</h2>
                         </div>
+                        <p className="text-slate-500 font-bold ml-1">✨ 打造專屬記憶點，讓學生名字過目不忘！</p>
                     </div>
 
                     {/* Scrollable Content Body */}
-                    <div className="flex-1 overflow-y-auto px-6 md:px-10 py-2 custom-scrollbar">
-                        {/* AI Description Editor / Result */}
-                        <div className="mb-6 flex-shrink-0">
-                            <h3 className="flex items-center gap-2 text-indigo-800 font-bold text-sm uppercase tracking-wide mb-2">
-                                <Sparkles className="w-4 h-4 text-amber-400" />
-                                AI 記憶口訣
-                            </h3>
-                            <textarea
-                                value={description}
-                                onChange={(e) => setDescription(e.target.value)}
-                                placeholder="點擊左圖「AI 記憶特徵」按鈕，或在此手動輸入特徵..."
-                                className="w-full h-32 md:h-40 p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100 text-indigo-900 font-medium leading-relaxed resize-none focus:bg-white focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 outline-none transition-all placeholder-indigo-300 scrollbar-thin scrollbar-thumb-indigo-200"
-                            />
+                    <div className="flex-1 overflow-y-auto px-6 md:px-10 py-4 custom-scrollbar space-y-6">
+
+                        {/* AI Description Editor */}
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                                <h3 className="flex items-center gap-2 text-indigo-900 font-extrabold text-lg">
+                                    <span className="p-1.5 bg-amber-100 rounded-lg"><Sparkles className="w-5 h-5 text-amber-500" /></span>
+                                    AI 記憶口訣
+                                </h3>
+                                {aiDescription && (
+                                    <span className="text-xs font-bold text-indigo-400 bg-indigo-50 px-2 py-1 rounded-md">已由 AI 生成</span>
+                                )}
+                            </div>
+
+                            <div className="clay-card !p-1 !rounded-3xl relative group border-2 border-indigo-50 transition-all hover:border-indigo-200">
+                                <textarea
+                                    value={description}
+                                    onChange={(e) => setDescription(e.target.value)}
+                                    placeholder="點擊左圖「AI 記憶特徵」來自動生成，或在此輸入您的獨門記憶法..."
+                                    className="w-full h-32 md:h-40 p-5 bg-white/50 rounded-[20px] text-indigo-900 font-bold text-lg leading-relaxed resize-none outline-none focus:bg-white focus:ring-4 focus:ring-indigo-100 transition-all placeholder-indigo-300/70"
+                                />
+                                <div className="absolute bottom-4 right-4 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <span className="text-xs font-bold text-indigo-300 bg-white/80 px-2 py-1 rounded-md shadow-sm">可編輯</span>
+                                </div>
+                            </div>
+
                             <AnimatePresence>
                                 {aiError && (
                                     <motion.div
                                         initial={{ opacity: 0, height: 0 }}
                                         animate={{ opacity: 1, height: 'auto' }}
                                         exit={{ opacity: 0, height: 0 }}
-                                        className="p-3 bg-rose-50 text-rose-600 rounded-xl border border-rose-100 text-xs font-bold flex items-center gap-2 mt-2"
+                                        className="p-4 bg-rose-50 text-rose-600 rounded-2xl border-l-4 border-rose-500 font-bold flex items-center gap-3 shadow-sm"
                                     >
-                                        <Zap className="w-4 h-4" />
+                                        <Zap className="w-5 h-5 flex-shrink-0" />
                                         {aiError}
                                     </motion.div>
                                 )}
                             </AnimatePresence>
                         </div>
 
-                        {/* Tag Input */}
-                        <div className="flex gap-2 mb-4 flex-shrink-0">
-                            <input
-                                type="text"
-                                value={inputValue}
-                                onChange={(e) => setInputValue(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && addTag()}
-                                placeholder="新增特徵標籤 (如: 眼鏡, 短髮)..."
-                                className="clay-input flex-1 !py-3 !text-base"
-                                autoFocus
-                            />
-                            <button onClick={addTag} className="btn-clay btn-clay-primary px-4 rounded-xl font-black aspect-square flex items-center justify-center">
-                                <Plus className="w-6 h-6" />
-                            </button>
-                        </div>
+                        {/* Tag Manager */}
+                        <div className="space-y-3">
+                            <h3 className="flex items-center gap-2 text-indigo-900 font-extrabold text-lg">
+                                <span className="p-1.5 bg-emerald-100 rounded-lg"><Tag className="w-5 h-5 text-emerald-500" /></span>
+                                特徵標籤
+                            </h3>
 
-                        {/* Tag List */}
-                        <div className="min-h-[120px] mb-6 p-4 bg-white/40 rounded-2xl border-2 border-white/50 shadow-inner">
-                            <div className="flex flex-wrap gap-2">
+                            <div className="flex gap-3">
+                                <div className="relative flex-1">
+                                    <input
+                                        type="text"
+                                        value={inputValue}
+                                        onChange={(e) => setInputValue(e.target.value)}
+                                        onKeyDown={(e) => e.key === 'Enter' && addTag()}
+                                        placeholder="新增標籤 (如: 黑框眼鏡)..."
+                                        className="clay-input w-full !text-left !pl-6 !border-indigo-100 focus:!border-indigo-300 !text-indigo-900"
+                                    />
+                                </div>
+                                <button
+                                    onClick={addTag}
+                                    disabled={!inputValue.trim()}
+                                    className="btn-clay btn-clay-primary !p-0 !w-16 !rounded-3xl hover:rotate-90 transition-transform disabled:opacity-50 disabled:hover:rotate-0 shadow-lg shadow-indigo-200"
+                                >
+                                    <Plus className="w-8 h-8" />
+                                </button>
+                            </div>
+
+                            <div className="min-h-[140px] p-5 bg-indigo-50/50 rounded-3xl border-2 border-white/60 shadow-inner flex flex-wrap content-start gap-3">
                                 {tags.length > 0 ? tags.map(tag => (
-                                    <span key={tag} className="px-4 py-2 bg-white text-indigo-600 rounded-xl font-bold flex items-center gap-2 shadow-sm border border-indigo-50 hover:scale-105 transition-transform">
+                                    <motion.span
+                                        layout
+                                        initial={{ scale: 0 }} animate={{ scale: 1 }}
+                                        key={tag}
+                                        className="clay-card !p-0 !px-4 !py-2 !rounded-xl !bg-white hover:!bg-rose-50 flex items-center gap-2 cursor-pointer group shadow-sm hover:shadow-md border-2 border-indigo-100/50 transition-all font-bold text-indigo-600"
+                                    >
                                         {tag}
-                                        <button onClick={() => removeTag(tag)} className="text-indigo-300 hover:text-rose-500 transition-colors">
-                                            <XCircle className="w-4 h-4" />
+                                        <button onClick={() => removeTag(tag)} className="text-indigo-300 group-hover:text-rose-500 transition-colors">
+                                            <XCircle className="w-5 h-5" />
                                         </button>
-                                    </span>
+                                    </motion.span>
                                 )) : (
-                                    <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 gap-2 opacity-60 py-8">
-                                        <Tag className="w-8 h-8" />
-                                        <p className="text-sm font-medium">尚無標籤，請新增特徵</p>
+                                    <div className="w-full h-full flex flex-col items-center justify-center text-slate-400/50 gap-3 py-8">
+                                        <Tag className="w-12 h-12" />
+                                        <p className="font-bold text-lg">尚無標籤</p>
                                     </div>
                                 )}
                             </div>
                         </div>
                     </div>
 
-                    {/* Footer Buttons (Fixed) */}
-                    <div className="p-6 md:p-10 md:pt-4 flex gap-4 flex-shrink-0 bg-gradient-to-t from-white/40 via-white/40 to-transparent">
-                        <button onClick={onClose} className="flex-1 py-4 font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors">取消</button>
-                        <button onClick={() => onSave(tags, description)} className="btn-clay btn-clay-primary flex-[2] py-4 text-lg shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all">儲存變更</button>
+                    {/* Footer Actions */}
+                    <div className="p-6 md:p-8 pt-4 flex gap-4 md:gap-6 flex-shrink-0 bg-white/40 backdrop-blur-md border-t border-white/50">
+                        <button
+                            onClick={onClose}
+                            className="btn-clay btn-clay-white flex-1 !text-slate-500 hover:!text-rose-500 hover:!border-rose-100"
+                        >
+                            <span className="text-lg">取消</span>
+                        </button>
+                        <button
+                            onClick={() => onSave(tags, description)}
+                            className="btn-clay btn-clay-primary flex-[2] !text-xl !tracking-widest shadow-xl shadow-indigo-300/50 hover:shadow-indigo-500/30"
+                        >
+                            儲存變更
+                        </button>
                     </div>
                 </div>
-
             </motion.div>
         </div>
     );
