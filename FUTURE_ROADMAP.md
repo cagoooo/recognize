@@ -49,6 +49,9 @@
 ### 12. 📱 社交分享卡片 (Social Review Cards) - *v3.3.0*
 - **進度**：實作 `html2canvas` 截圖功能，可生成精美的戰績分享圖 (Dashboard & Game Result)。
 
+### 17. 🎨 TagEditor UI Revamp (Pro Max) - *v3.3.1*
+- **進度**：全面升級標籤編輯器，導入 Claymorphism 3.0 與 RWD 優化，提供更沉浸式的 AI 記憶體驗。
+
 ---
 
 ## 🟢 Phase 5: 生態系與智能化 (Next Step)
