@@ -741,52 +741,51 @@ const StudentManager = ({ cls, onBack, onStartGame }) => {
                 </div>
             </motion.div>
 
-            <div className="flex flex-col md:flex-row gap-10 w-full max-w-4xl mb-20">
-                <div className="clay-card clay-card-indigo flex-1 p-10 relative overflow-hidden text-white border-white/20">
+            <div className="flex flex-col md:flex-row gap-8 w-full max-w-5xl mb-24 px-4">
+                <div className="clay-card clay-card-create flex-1 p-8 md:p-12 relative overflow-hidden text-white">
                     {/* Decorative Background */}
-                    <div className="absolute -top-20 -right-20 w-64 h-64 bg-white/10 rounded-full blur-3xl opacity-50" />
-                    <div className="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
+                    <div className="absolute -top-20 -right-20 w-80 h-80 bg-white/10 rounded-full blur-3xl opacity-50 pointer-events-none" />
+                    <div className="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-black/10 to-transparent pointer-events-none" />
 
                     <div className="relative z-10">
-                        <div className="flex items-center gap-5 mb-8">
-                            <div className="w-16 h-16 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center shadow-lg border border-white/20">
-                                <UserPlus className="w-8 h-8 text-white" />
+                        <div className="flex items-center gap-6 mb-10">
+                            <div className="w-20 h-20 bg-white/20 backdrop-blur-md rounded-3xl flex items-center justify-center shadow-lg border border-white/30 transform -rotate-6">
+                                <UserPlus className="w-10 h-10 text-white drop-shadow-md" />
                             </div>
                             <div>
-                                <h3 className="text-3xl font-black text-white leading-tight">收編新戰友</h3>
-                                <p className="text-indigo-200 font-bold text-sm tracking-widest mt-1 uppercase">Create Profile</p>
+                                <h3 className="text-4xl font-black text-white leading-tight drop-shadow-sm">收編新戰友</h3>
+                                <p className="text-indigo-100/80 font-bold text-sm tracking-[0.2em] mt-2 uppercase bg-white/10 px-3 py-1 rounded-full w-fit">Create Profile</p>
                             </div>
                         </div>
 
-                        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-                            <div className="flex flex-col sm:flex-row gap-4">
-                                <div className="relative flex-[2] group/input">
-                                    <User className="absolute left-6 top-1/2 -translate-y-1/2 text-indigo-400/70 w-6 h-6 z-10 group-focus-within/input:text-indigo-500 transition-colors" />
+                        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+                            <div className="flex flex-col sm:flex-row gap-5">
+                                <div className="relative flex-[2] create-input-group">
+                                    <User className="absolute left-6 top-1/2 -translate-y-1/2 text-white/70 w-6 h-6 z-10" />
                                     <input
                                         type="text"
                                         placeholder="姓名"
-                                        className="clay-input pl-16 text-left w-full border-white/50 bg-white/90 focus:bg-white text-indigo-950 placeholder-indigo-300/70 shadow-lg"
+                                        className="clay-input-glass"
                                         value={newName} onChange={(e) => setNewName(e.target.value)} required
                                     />
                                 </div>
-                                <div className="relative flex-1 group/input">
-                                    <Hash className="absolute left-6 top-1/2 -translate-y-1/2 text-indigo-400/70 w-6 h-6 z-10 group-focus-within/input:text-indigo-500 transition-colors" />
+                                <div className="relative flex-1 create-input-group">
+                                    <Hash className="absolute left-6 top-1/2 -translate-y-1/2 text-white/70 w-6 h-6 z-10" />
                                     <input
                                         type="text"
                                         placeholder="座號"
-                                        className="clay-input pl-16 text-left w-full border-white/50 bg-white/90 focus:bg-white text-indigo-950 placeholder-indigo-300/70 shadow-lg"
+                                        className="clay-input-glass"
                                         value={newSeatNumber} onChange={(e) => setNewSeatNumber(e.target.value)}
                                     />
                                 </div>
                             </div>
 
-                            <label className="group flex flex-col items-center justify-center gap-3 py-6 bg-white/5 border-4 border-white/20 border-dashed rounded-[32px] cursor-pointer hover:bg-white/10 hover:border-white/40 transition-all relative overflow-hidden">
-                                <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                                <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner border border-white/10 relative z-10">
-                                    <Camera className="w-6 h-6 text-white fill-white/20" />
+                            <label className="group upload-zone-glass flex flex-col items-center justify-center gap-3 py-8 cursor-pointer relative overflow-hidden">
+                                <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner border border-white/20 relative z-10">
+                                    <Camera className="w-7 h-7 text-white" />
                                 </div>
-                                <span className="text-white font-bold text-sm max-w-[200px] truncate opacity-80 group-hover:opacity-100 relative z-10 tracking-wider">
-                                    {photoFile ? <span className="text-emerald-300 flex items-center gap-2">✅ {photoFile.name}</span> : '上傳大頭照 (選填)'}
+                                <span className="text-white font-bold text-sm opacity-90 group-hover:opacity-100 relative z-10 tracking-wider">
+                                    {photoFile ? <span className="text-emerald-300 flex items-center gap-2 bg-emerald-900/30 px-3 py-1 rounded-lg">✅ {photoFile.name}</span> : '上傳大頭照 (選填)'}
                                 </span>
                                 <input type="file" className="hidden" onChange={(e) => setPhotoFile(e.target.files[0])} accept="image/*" />
                             </label>
@@ -794,11 +793,20 @@ const StudentManager = ({ cls, onBack, onStartGame }) => {
                             <button
                                 type="submit"
                                 disabled={isUploading}
-                                className="btn-clay bg-white text-indigo-600 hover:bg-indigo-50 h-18 text-xl w-full shadow-xl border-none mt-2 relative overflow-hidden group/btn"
+                                className="bg-white text-indigo-600 hover:bg-indigo-50 hover:scale-[1.02] active:scale-95 transition-all duration-300 h-20 text-xl font-black w-full shadow-xl rounded-[28px] mt-2 relative overflow-hidden group/btn flex items-center justify-center gap-3"
                             >
-                                <span className="relative z-10 flex items-center gap-2">
-                                    {isUploading ? "上傳中..." : <><UserPlus className="w-6 h-6" /> 確認加入</>}
-                                </span>
+                                {isUploading ? (
+                                    <span className="animate-pulse">上傳中...</span>
+                                ) : (
+                                    <>
+                                        <div className="bg-indigo-100 p-2 rounded-xl">
+                                            <UserPlus className="w-6 h-6 text-indigo-600" />
+                                        </div>
+                                        <span>確認加入</span>
+                                    </>
+                                )}
+                            </button>
+
                                 <div className="absolute inset-0 bg-gradient-to-r from-indigo-50 via-white to-indigo-50 opacity-0 group-hover/btn:opacity-50 transition-opacity duration-500" />
                             </button>
                         </form>
@@ -964,121 +972,121 @@ const StudentManager = ({ cls, onBack, onStartGame }) => {
                 ))}
             </div>
 
-            {/* Grouping Modal */}
-            <AnimatePresence>
-                {showGroupingModal && (
-                    <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4" onClick={() => setShowGroupingModal(false)}>
-                        <motion.div
-                            initial={{ scale: 0.9, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.9, opacity: 0 }}
-                            onClick={(e) => e.stopPropagation()}
-                            className="bg-white/90 backdrop-blur-xl rounded-[40px] p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-white/50"
-                        >
-                            <div className="flex justify-between items-center mb-8">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 bg-indigo-100 rounded-2xl flex items-center justify-center text-indigo-600">
-                                        <Users className="w-6 h-6" />
-                                    </div>
-                                    <div>
-                                        <h3 className="text-2xl font-black text-indigo-950">智慧分組助手</h3>
-                                        <p className="text-indigo-400 font-bold text-sm">Smart Grouping</p>
-                                    </div>
-                                </div>
-                                <button onClick={() => setShowGroupingModal(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
-                                    <XCircle className="w-8 h-8 text-slate-400" />
-                                </button>
+            {/* Grouping Modal */ }
+    <AnimatePresence>
+        {showGroupingModal && (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4" onClick={() => setShowGroupingModal(false)}>
+                <motion.div
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.9, opacity: 0 }}
+                    onClick={(e) => e.stopPropagation()}
+                    className="bg-white/90 backdrop-blur-xl rounded-[40px] p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-white/50"
+                >
+                    <div className="flex justify-between items-center mb-8">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 bg-indigo-100 rounded-2xl flex items-center justify-center text-indigo-600">
+                                <Users className="w-6 h-6" />
                             </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                                <div className="clay-card p-4 bg-indigo-50/50">
-                                    <label className="text-sm font-bold text-indigo-400 uppercase tracking-wider mb-2 block">分組策略</label>
-                                    <select
-                                        value={groupingStrategy}
-                                        onChange={(e) => setGroupingStrategy(e.target.value)}
-                                        className="w-full bg-white border-2 border-indigo-100 rounded-xl px-4 py-2 font-bold text-indigo-900 outline-none focus:border-indigo-400"
-                                    >
-                                        <option value="random">🎲 隨機分組</option>
-                                        <option value="hetero">⚡ 異質分組 (強弱混合)</option>
-                                        <option value="interest">❤️ 興趣分組 (同標籤)</option>
-                                    </select>
-                                </div>
-                                <div className="clay-card p-4 bg-indigo-50/50">
-                                    <label className="text-sm font-bold text-indigo-400 uppercase tracking-wider mb-2 block">每組人數</label>
-                                    <input
-                                        type="number"
-                                        min="2"
-                                        max="10"
-                                        value={groupSize}
-                                        onChange={(e) => setGroupSize(parseInt(e.target.value))}
-                                        className="w-full bg-white border-2 border-indigo-100 rounded-xl px-4 py-2 font-bold text-indigo-900 outline-none focus:border-indigo-400"
-                                    />
-                                </div>
-                                <button
-                                    onClick={handleGroup}
-                                    className="btn-clay bg-indigo-600 text-white flex items-center justify-center gap-2 shadow-lg hover:scale-105 active:scale-95 transition-all"
-                                >
-                                    <Sparkles className="w-5 h-5" />
-                                    <span className="text-lg">開始分組</span>
-                                </button>
+                            <div>
+                                <h3 className="text-2xl font-black text-indigo-950">智慧分組助手</h3>
+                                <p className="text-indigo-400 font-bold text-sm">Smart Grouping</p>
                             </div>
-
-                            {/* Results */}
-                            {groups.length > 0 && (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    {groups.map((group, idx) => (
-                                        <div key={idx} className="clay-card p-4 border-2 border-indigo-50 hover:border-indigo-200 transition-colors">
-                                            <div className="flex justify-between items-center mb-4 pb-2 border-b border-indigo-50">
-                                                <h4 className="font-black text-indigo-900 text-lg">第 {idx + 1} 組</h4>
-                                                <span className="bg-indigo-100 text-indigo-600 px-2 py-1 rounded-lg text-xs font-bold">{group.length} 人</span>
-                                            </div>
-                                            <div className="flex flex-col gap-2">
-                                                {group.map(student => (
-                                                    <div key={student.id} className="flex items-center gap-3 p-2 hover:bg-white rounded-xl transition-colors">
-                                                        <img
-                                                            src={student.photoUrl || `https://api.dicebear.com/7.x/fun-emoji/svg?seed=${student.name}`}
-                                                            className="w-8 h-8 rounded-full object-cover bg-indigo-50"
-                                                            alt=""
-                                                        />
-                                                        <span className="font-bold text-slate-700">{student.name}</span>
-                                                        {student.tags && student.tags[0] && (
-                                                            <span className="text-xs bg-slate-100 text-slate-500 px-1 rounded ml-auto">{student.tags[0]}</span>
-                                                        )}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-
-                            {groups.length === 0 && (
-                                <div className="text-center py-20 opacity-50">
-                                    <Users className="w-16 h-16 mx-auto mb-4 text-slate-300" />
-                                    <p className="font-bold text-slate-400 text-xl">點擊「開始分組」產生結果</p>
-                                </div>
-                            )}
-                        </motion.div>
+                        </div>
+                        <button onClick={() => setShowGroupingModal(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+                            <XCircle className="w-8 h-8 text-slate-400" />
+                        </button>
                     </div>
-                )}
-            </AnimatePresence>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        <div className="clay-card p-4 bg-indigo-50/50">
+                            <label className="text-sm font-bold text-indigo-400 uppercase tracking-wider mb-2 block">分組策略</label>
+                            <select
+                                value={groupingStrategy}
+                                onChange={(e) => setGroupingStrategy(e.target.value)}
+                                className="w-full bg-white border-2 border-indigo-100 rounded-xl px-4 py-2 font-bold text-indigo-900 outline-none focus:border-indigo-400"
+                            >
+                                <option value="random">🎲 隨機分組</option>
+                                <option value="hetero">⚡ 異質分組 (強弱混合)</option>
+                                <option value="interest">❤️ 興趣分組 (同標籤)</option>
+                            </select>
+                        </div>
+                        <div className="clay-card p-4 bg-indigo-50/50">
+                            <label className="text-sm font-bold text-indigo-400 uppercase tracking-wider mb-2 block">每組人數</label>
+                            <input
+                                type="number"
+                                min="2"
+                                max="10"
+                                value={groupSize}
+                                onChange={(e) => setGroupSize(parseInt(e.target.value))}
+                                className="w-full bg-white border-2 border-indigo-100 rounded-xl px-4 py-2 font-bold text-indigo-900 outline-none focus:border-indigo-400"
+                            />
+                        </div>
+                        <button
+                            onClick={handleGroup}
+                            className="btn-clay bg-indigo-600 text-white flex items-center justify-center gap-2 shadow-lg hover:scale-105 active:scale-95 transition-all"
+                        >
+                            <Sparkles className="w-5 h-5" />
+                            <span className="text-lg">開始分組</span>
+                        </button>
+                    </div>
+
+                    {/* Results */}
+                    {groups.length > 0 && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {groups.map((group, idx) => (
+                                <div key={idx} className="clay-card p-4 border-2 border-indigo-50 hover:border-indigo-200 transition-colors">
+                                    <div className="flex justify-between items-center mb-4 pb-2 border-b border-indigo-50">
+                                        <h4 className="font-black text-indigo-900 text-lg">第 {idx + 1} 組</h4>
+                                        <span className="bg-indigo-100 text-indigo-600 px-2 py-1 rounded-lg text-xs font-bold">{group.length} 人</span>
+                                    </div>
+                                    <div className="flex flex-col gap-2">
+                                        {group.map(student => (
+                                            <div key={student.id} className="flex items-center gap-3 p-2 hover:bg-white rounded-xl transition-colors">
+                                                <img
+                                                    src={student.photoUrl || `https://api.dicebear.com/7.x/fun-emoji/svg?seed=${student.name}`}
+                                                    className="w-8 h-8 rounded-full object-cover bg-indigo-50"
+                                                    alt=""
+                                                />
+                                                <span className="font-bold text-slate-700">{student.name}</span>
+                                                {student.tags && student.tags[0] && (
+                                                    <span className="text-xs bg-slate-100 text-slate-500 px-1 rounded ml-auto">{student.tags[0]}</span>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {groups.length === 0 && (
+                        <div className="text-center py-20 opacity-50">
+                            <Users className="w-16 h-16 mx-auto mb-4 text-slate-300" />
+                            <p className="font-bold text-slate-400 text-xl">點擊「開始分組」產生結果</p>
+                        </div>
+                    )}
+                </motion.div>
+            </div>
+        )}
+    </AnimatePresence>
 
 
-            {
-                editingTagsStudent && (
-                    <TagEditor
-                        student={editingTagsStudent}
-                        onClose={() => setEditingTagsStudent(null)}
-                        onSave={(tags, description) => {
-                            updateStudentTags(editingTagsStudent.id, tags);
-                            if (description !== undefined) {
-                                updateStudentDescription(editingTagsStudent.id, description);
-                            }
-                            setEditingTagsStudent(null);
-                        }}
-                    />
-                )
-            }
+    {
+        editingTagsStudent && (
+            <TagEditor
+                student={editingTagsStudent}
+                onClose={() => setEditingTagsStudent(null)}
+                onSave={(tags, description) => {
+                    updateStudentTags(editingTagsStudent.id, tags);
+                    if (description !== undefined) {
+                        updateStudentDescription(editingTagsStudent.id, description);
+                    }
+                    setEditingTagsStudent(null);
+                }}
+            />
+        )
+    }
         </motion.div >
     );
 };
