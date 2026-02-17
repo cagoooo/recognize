@@ -861,38 +861,64 @@ const StudentManager = ({ cls, onBack, onStartGame }) => {
                                 >
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-2">
                                         {/* List Format Guide */}
-                                        <div className="glass-instruction-card border-emerald-100">
-                                            <h4 className="flex items-center gap-2 font-black text-emerald-800 text-lg">
-                                                <FileSpreadsheet className="w-6 h-6" /> 匯入名單規範
-                                            </h4>
-                                            <div className="flex flex-col gap-2 text-sm text-emerald-900/80 font-medium">
-                                                <p>🔹 支援格式：<span className="font-bold bg-emerald-100 px-2 rounded">.xlsx</span> <span className="font-bold bg-emerald-100 px-2 rounded">.csv</span></p>
-                                                <p>🔹 必填欄位 (標頭)：</p>
-                                                <div className="flex gap-2">
-                                                    <span className="bg-emerald-500 text-white px-3 py-1 rounded-lg font-bold shadow-sm text-xs">姓名</span>
-                                                    <span className="bg-emerald-500 text-white px-3 py-1 rounded-lg font-bold shadow-sm text-xs">座號</span>
-                                                    <span className="bg-slate-200 text-slate-500 px-3 py-1 rounded-lg font-bold text-xs">學號 (選填)</span>
+                                        <div className="clay-instruction-card clay-instruction-emerald">
+                                            <h4 className="flex items-center mb-4">
+                                                <div className="instruction-icon-box bg-emerald-100 text-emerald-600">
+                                                    <FileSpreadsheet className="w-6 h-6" />
                                                 </div>
-                                                <p className="text-xs opacity-70 mt-1">⚠️ 若使用 CSV，請確認編碼為 UTF-8 以避免亂碼。</p>
+                                                <span className="font-black text-emerald-900 text-lg">匯入名單規範</span>
+                                            </h4>
+
+                                            <div className="flex flex-col gap-3 text-sm text-emerald-900/80 font-bold">
+                                                <div className="flex items-center flex-wrap gap-2">
+                                                    <span className="opacity-70">🔹 支援格式：</span>
+                                                    <span className="instruction-tag bg-emerald-100 text-emerald-700">.xlsx</span>
+                                                    <span className="instruction-tag bg-emerald-100 text-emerald-700">.csv</span>
+                                                </div>
+
+                                                <div className="flex flex-col gap-2">
+                                                    <span className="opacity-70">🔹 必填欄位 (標頭)：</span>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        <span className="instruction-tag bg-emerald-500 text-white shadow-emerald-200/50">姓名</span>
+                                                        <span className="instruction-tag bg-emerald-500 text-white shadow-emerald-200/50">座號</span>
+                                                        <span className="instruction-tag bg-slate-100 text-slate-500 border-slate-200">學號 (選填)</span>
+                                                    </div>
+                                                </div>
+
+                                                <div className="mt-2 p-3 bg-yellow-50/50 border-2 border-yellow-100 rounded-2xl flex items-start gap-2">
+                                                    <div className="mt-0.5 min-w-[16px]">⚠️</div>
+                                                    <p className="text-xs text-yellow-700 leading-relaxed opacity-90">若使用 CSV，請確認編碼為 <span className="font-black">UTF-8</span> 以避免亂碼。</p>
+                                                </div>
                                             </div>
                                         </div>
 
                                         {/* Photo Format Guide */}
-                                        <div className="glass-instruction-card border-blue-100">
-                                            <h4 className="flex items-center gap-2 font-black text-blue-800 text-lg">
-                                                <Images className="w-6 h-6" /> 照片檔名規則
+                                        <div className="clay-instruction-card clay-instruction-blue">
+                                            <h4 className="flex items-center mb-4">
+                                                <div className="instruction-icon-box bg-blue-100 text-blue-600">
+                                                    <Images className="w-6 h-6" />
+                                                </div>
+                                                <span className="font-black text-blue-900 text-lg">照片檔名規則</span>
                                             </h4>
-                                            <div className="flex flex-col gap-2 text-sm text-blue-900/80 font-medium">
-                                                <p>🔹 支援格式：<span className="font-bold bg-blue-100 px-2 rounded">.jpg</span> <span className="font-bold bg-blue-100 px-2 rounded">.png</span></p>
-                                                <p>🔹 檔名格式 (二擇一)：</p>
-                                                <div className="flex flex-col gap-2 mt-1">
-                                                    <div className="bg-white/60 p-2 rounded-lg border border-blue-100">
-                                                        <code className="text-blue-600 font-bold block mb-1">座號_姓名.jpg</code>
-                                                        <span className="text-xs text-slate-500">例：01_王小明.jpg</span>
-                                                    </div>
-                                                    <div className="bg-white/60 p-2 rounded-lg border border-blue-100">
-                                                        <code className="text-blue-600 font-bold block mb-1">學號.jpg</code>
-                                                        <span className="text-xs text-slate-500">例：11001.jpg</span>
+
+                                            <div className="flex flex-col gap-3 text-sm text-blue-900/80 font-bold">
+                                                <div className="flex items-center flex-wrap gap-2">
+                                                    <span className="opacity-70">🔹 支援格式：</span>
+                                                    <span className="instruction-tag bg-blue-100 text-blue-700">.jpg</span>
+                                                    <span className="instruction-tag bg-blue-100 text-blue-700">.png</span>
+                                                </div>
+
+                                                <div className="flex flex-col gap-2">
+                                                    <span className="opacity-70">🔹 檔名格式 (二擇一)：</span>
+                                                    <div className="flex flex-col gap-2">
+                                                        <div className="bg-white/80 p-3 rounded-2xl border-2 border-blue-50 hover:border-blue-200 transition-colors shadow-sm">
+                                                            <code className="text-blue-600 font-black text-lg block mb-1">座號_姓名.jpg</code>
+                                                            <span className="text-xs text-slate-400 font-medium">例：01_王小明.jpg</span>
+                                                        </div>
+                                                        <div className="bg-white/80 p-3 rounded-2xl border-2 border-blue-50 hover:border-blue-200 transition-colors shadow-sm">
+                                                            <code className="text-blue-600 font-black text-lg block mb-1">學號.jpg</code>
+                                                            <span className="text-xs text-slate-400 font-medium">例：11001.jpg</span>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
