@@ -853,6 +853,22 @@ body {
   animation: pulse-soft 2s infinite;
 }
 
+@keyframes bounce-x {
+
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  50% {
+    transform: translateX(25%);
+  }
+}
+
+.animate-bounce-x {
+  animation: bounce-x 1s infinite;
+}
+
 /* --- Game UI Enhancements --- */
 .game-option-grid {
   display: grid;
