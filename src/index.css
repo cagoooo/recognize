@@ -875,9 +875,11 @@ body {
 }
 
 .game-photo-wrap {
-  width: min(340px, 85vw);
-  aspect-ratio: 1;
-  border-radius: 64px;
+  width: min(280px, 75vw);
+  /* 直式縮窄一點，整體視覺更協調 */
+  aspect-ratio: 3 / 4;
+  /* ← 改為直式 3:4，完整顯示站姿人像 */
+  border-radius: 48px;
   border: 12px solid white;
   box-shadow: var(--clay-card-shadow), 0 0 60px rgba(79, 70, 229, 0.1);
   overflow: hidden;

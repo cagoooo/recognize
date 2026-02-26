@@ -14,6 +14,7 @@ import {
     orderBy
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { compressImage } from '../lib/imageUtils';
 
 export const useClasses = (userId) => {
     const [classes, setClasses] = useState([]);
@@ -78,8 +79,10 @@ export const useStudents = (classId) => {
     const addStudent = async (name, photoFile, seatNumber = "") => {
         let photoUrl = "";
         if (photoFile) {
-            const storageRef = ref(storage, `students/${Date.now()}_${photoFile.name}`);
-            await uploadBytes(storageRef, photoFile);
+            // 上傳前先壓縮圖片（最大 800px 長邊 + 修正 EXIF 旋轉）
+            const compressedFile = await compressImage(photoFile);
+            const storageRef = ref(storage, `students/${Date.now()}_${compressedFile.name}`);
+            await uploadBytes(storageRef, compressedFile);
             photoUrl = await getDownloadURL(storageRef);
         }
 
@@ -114,8 +117,10 @@ export const useStudents = (classId) => {
     };
 
     const updateStudentPhoto = async (studentId, photoFile) => {
-        const storageRef = ref(storage, `students/${Date.now()}_${photoFile.name}`);
-        await uploadBytes(storageRef, photoFile);
+        // 上傳前先壓縮圖片（最大 800px 長邊 + 修正 EXIF 旋轉）
+        const compressedFile = await compressImage(photoFile);
+        const storageRef = ref(storage, `students/${Date.now()}_${compressedFile.name}`);
+        await uploadBytes(storageRef, compressedFile);
         const photoUrl = await getDownloadURL(storageRef);
         await updateDoc(doc(db, 'students', studentId), { photoUrl });
         return photoUrl;
