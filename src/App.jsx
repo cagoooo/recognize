@@ -519,6 +519,10 @@ const StudentManager = ({ cls, onBack, onStartGame }) => {
     const [editingTagsStudent, setEditingTagsStudent] = useState(null);
     const [showImportHelp, setShowImportHelp] = useState(false); // New state for help toggle
 
+    // 流水號配對預覽 State
+    const [sequentialPreview, setSequentialPreview] = useState(null);
+    // sequentialPreview: { pairs: [{file, student}], unmatchedFiles: File[] } | null
+
     // Grouping State
     const [showGroupingModal, setShowGroupingModal] = useState(false);
     const [groupingStrategy, setGroupingStrategy] = useState('random'); // random, hetero, interest
@@ -613,46 +617,118 @@ const StudentManager = ({ cls, onBack, onStartGame }) => {
         e.target.value = ''; // Reset input
     };
 
+    // 從檔名中提取最大數字作為排序依據（如 IMG_8860.JPG → 8860）
+    const extractSortKey = (filename) => {
+        const nums = filename.match(/\d+/g);
+        return nums ? Math.max(...nums.map(Number)) : 0;
+    };
+
     const handlePhotoUpload = async (e) => {
         const files = Array.from(e.target.files);
         if (files.length === 0) return;
 
         let matchedCount = 0;
-        let unmatched = [];
+        const matched = [];
+        const unmatched = [];
 
-        setIsUploading(true);
-
-        const uploadPromises = files.map(async (file) => {
-            const fileName = file.name.split('.')[0].trim(); // 拿檔名 (不含副檔名)
-
-            // 智慧匹配：優先比對姓名，次之比對座號
+        // ① 先嘗試語意匹配（姓名 / 座號）
+        files.forEach((file) => {
+            const fileName = file.name.split('.')[0].trim();
             const targetStudent = students.find(s =>
                 s.name.trim() === fileName ||
                 (s.seatNumber && String(s.seatNumber).trim() === fileName) ||
-                fileName.includes(s.name.trim()) // 處理 01_潘宥睿.jpg 這種格式
+                fileName.includes(s.name.trim())
             );
-
             if (targetStudent) {
-                try {
-                    await updateStudentPhoto(targetStudent.id, file);
-                    matchedCount++;
-                } catch (err) {
-                    console.error(`Upload failed for ${fileName}:`, err);
-                }
+                matched.push({ file, student: targetStudent });
             } else {
-                unmatched.push(file.name);
+                unmatched.push(file);
             }
         });
 
-        await Promise.all(uploadPromises);
+        // ② 判斷是否進入流水號模式
+        // 條件：未匹配數量 > 50% 且至少有 2 張照片
+        const unmatchedRatio = unmatched.length / files.length;
+        if (files.length >= 2 && unmatchedRatio > 0.5 && students.length > 0) {
+            // 流水號模式：依檔名數字排序 ↔ 依座號排序學生
+            const sortedFiles = [...unmatched].sort((a, b) =>
+                extractSortKey(a.name) - extractSortKey(b.name)
+            );
+            const sortedStudents = [...students]
+                .filter(s => !matched.some(m => m.student.id === s.id)) // 排除已匹配
+                .sort((a, b) => {
+                    const sa = parseInt(a.seatNumber) || 999;
+                    const sb = parseInt(b.seatNumber) || 999;
+                    return sa - sb;
+                });
+
+            const pairCount = Math.min(sortedFiles.length, sortedStudents.length);
+            const pairs = Array.from({ length: pairCount }, (_, i) => ({
+                file: sortedFiles[i],
+                student: sortedStudents[i],
+                previewUrl: URL.createObjectURL(sortedFiles[i]),
+            }));
+            const extraFiles = sortedFiles.slice(pairCount); // 超出學生數量的照片
+
+            // 先執行語意匹配部分（如有）
+            if (matched.length > 0) {
+                setIsUploading(true);
+                await Promise.all(matched.map(({ file, student }) =>
+                    updateStudentPhoto(student.id, file).catch(err =>
+                        console.error(`Upload failed for ${file.name}:`, err)
+                    )
+                ));
+                setIsUploading(false);
+                matchedCount = matched.length;
+            }
+
+            // 彈出流水號預覽 Modal
+            setSequentialPreview({ pairs, extraFiles, prematched: matchedCount });
+            e.target.value = '';
+            return;
+        }
+
+        // ③ 純語意匹配模式（原有邏輯）
+        setIsUploading(true);
+        await Promise.all(matched.map(({ file, student }) =>
+            updateStudentPhoto(student.id, file)
+                .then(() => matchedCount++)
+                .catch(err => console.error(`Upload failed for ${file.name}:`, err))
+        ));
         setIsUploading(false);
 
         let message = `照片同步完成！\n✅ 成功匹配並更新：${matchedCount} 位`;
         if (unmatched.length > 0) {
-            message += `\n❌ 未匹配成功：${unmatched.length} 位\n(${unmatched.slice(0, 5).join(', ')}${unmatched.length > 5 ? '...' : ''})`;
+            message += `\n❌ 未匹配成功：${unmatched.length} 位\n(${unmatched.slice(0, 5).map(f => f.name).join(', ')}${unmatched.length > 5 ? '...' : ''})`;
         }
         alert(message);
-        e.target.value = ''; // Reset
+        e.target.value = '';
+    };
+
+    // 確認流水號配對並開始上傳
+    const handleConfirmSequentialUpload = async () => {
+        if (!sequentialPreview) return;
+        // 先解構保存所有需要的值，再清除 state（避免 React 非同步更新問題）
+        const { pairs, prematched } = sequentialPreview;
+
+        // 清除 Object URL 以免記憶體洩漏
+        pairs.forEach(p => URL.revokeObjectURL(p.previewUrl));
+
+        setSequentialPreview(null);
+        setIsUploading(true);
+
+        let successCount = 0;
+        for (const { file, student } of pairs) {
+            try {
+                await updateStudentPhoto(student.id, file);
+                successCount++;
+            } catch (err) {
+                console.error(`流水號上傳失敗 ${file.name}:`, err);
+            }
+        }
+        setIsUploading(false);
+
+        alert(`🎉 照片同步完成！\n✅ 流水號配對上傳：${successCount} 位${prematched > 0 ? `\n✅ 語意匹配上傳：${prematched} 位` : ''}`);
     };
 
     return (
@@ -920,7 +996,7 @@ const StudentManager = ({ cls, onBack, onStartGame }) => {
                                                 </div>
 
                                                 <div className="flex flex-col gap-2">
-                                                    <span className="opacity-70">🔹 檔名格式 (二擇一)：</span>
+                                                    <span className="opacity-70">🔹 模式一｜語意匹配：</span>
                                                     <div className="flex flex-col gap-2">
                                                         <div className="bg-white/80 p-3 rounded-2xl border-2 border-blue-50 hover:border-blue-200 transition-colors shadow-sm">
                                                             <code className="text-blue-600 font-black text-lg block mb-1">座號_姓名.jpg</code>
@@ -930,6 +1006,16 @@ const StudentManager = ({ cls, onBack, onStartGame }) => {
                                                             <code className="text-blue-600 font-black text-lg block mb-1">學號.jpg</code>
                                                             <span className="text-xs text-slate-400 font-medium">例：11001.jpg</span>
                                                         </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex flex-col gap-2">
+                                                    <span className="opacity-70">⭐ 模式二｜流水號自動配對：</span>
+                                                    <div className="bg-gradient-to-br from-sky-50 to-indigo-50 p-3 rounded-2xl border-2 border-sky-200 shadow-sm">
+                                                        <code className="text-sky-600 font-black text-lg block mb-1">IMG_8860.jpg</code>
+                                                        <span className="text-xs text-sky-700 font-bold leading-relaxed">
+                                                            直接上傳相機原始流水號！系統自動依數字排序照片，並對應座號由小到大的學生，無需改檔名。
+                                                        </span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -1064,6 +1150,103 @@ const StudentManager = ({ cls, onBack, onStartGame }) => {
                                     <p className="font-bold text-slate-400 text-xl">點擊「開始分組」產生結果</p>
                                 </div>
                             )}
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* 流水號配對預覽 Modal */}
+            <AnimatePresence>
+                {sequentialPreview && (
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4">
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                            className="bg-white/95 backdrop-blur-xl rounded-[40px] p-8 max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl border border-white/50 flex flex-col"
+                        >
+                            {/* Header */}
+                            <div className="flex items-center gap-4 mb-6">
+                                <div className="w-14 h-14 bg-gradient-to-br from-sky-400 to-indigo-500 rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0">
+                                    <Images className="w-7 h-7 text-white" />
+                                </div>
+                                <div className="flex-1">
+                                    <h3 className="text-2xl font-black text-indigo-950">流水號照片配對</h3>
+                                    <p className="text-indigo-400 font-bold text-sm">請確認配對結果後再上傳</p>
+                                </div>
+                                <div className="bg-sky-100 text-sky-700 px-4 py-2 rounded-2xl font-black text-lg">
+                                    {sequentialPreview.pairs.length} 對
+                                </div>
+                            </div>
+
+                            {/* Info Banner */}
+                            <div className="bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-amber-200 rounded-2xl px-5 py-3 mb-5 flex items-start gap-3">
+                                <span className="text-lg mt-0.5">ℹ️</span>
+                                <p className="text-sm text-amber-800 font-bold leading-relaxed">
+                                    系統依照片的<span className="text-amber-600">數字流水號排序</span>，自動對應座號由小到大的學生。若順序有誤，請取消後改用「座號_姓名」格式命名。
+                                </p>
+                            </div>
+
+                            {/* Preview Table */}
+                            <div className="overflow-y-auto flex-1 rounded-2xl border-2 border-slate-100 mb-6">
+                                <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-0 text-xs font-black text-slate-400 uppercase tracking-wider bg-slate-50 px-4 py-3 border-b border-slate-100">
+                                    <span className="col-span-2">照片檔案</span>
+                                    <span className="px-2">→</span>
+                                    <span>學生</span>
+                                </div>
+                                {sequentialPreview.pairs.map(({ file, student, previewUrl }, idx) => (
+                                    <div
+                                        key={idx}
+                                        className={`grid grid-cols-[auto_1fr_auto_1fr] items-center gap-3 px-4 py-3 ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'} border-b border-slate-50 last:border-0`}
+                                    >
+                                        {/* 縮圖 */}
+                                        <img
+                                            src={previewUrl}
+                                            alt={file.name}
+                                            className="w-12 h-12 rounded-xl object-cover border-2 border-sky-100 flex-shrink-0"
+                                        />
+                                        {/* 檔名 */}
+                                        <div className="min-w-0">
+                                            <p className="text-sm font-bold text-slate-700 truncate">{file.name}</p>
+                                            <p className="text-xs text-slate-400 font-medium">#{idx + 1}</p>
+                                        </div>
+                                        {/* 箭頭 */}
+                                        <ArrowRight className="w-5 h-5 text-indigo-300 flex-shrink-0" />
+                                        {/* 學生資訊 */}
+                                        <div className="min-w-0">
+                                            <p className="text-sm font-black text-indigo-900 truncate">{student.name}</p>
+                                            <p className="text-xs text-sky-500 font-bold">座號 {student.seatNumber || '-'}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                                {sequentialPreview.extraFiles?.length > 0 && (
+                                    <div className="px-4 py-3 bg-rose-50 border-t border-rose-100">
+                                        <p className="text-xs text-rose-500 font-bold">⚠️ 以下 {sequentialPreview.extraFiles.length} 張照片超出學生人數，將不會上傳：{sequentialPreview.extraFiles.map(f => f.name).join(', ')}</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex gap-4">
+                                <button
+                                    onClick={() => {
+                                        sequentialPreview.pairs.forEach(p => URL.revokeObjectURL(p.previewUrl));
+                                        setSequentialPreview(null);
+                                    }}
+                                    className="flex-1 py-4 rounded-[20px] border-2 border-slate-200 font-black text-slate-500 hover:bg-slate-50 hover:border-slate-300 transition-all text-lg"
+                                >
+                                    取消
+                                </button>
+                                <motion.button
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.96 }}
+                                    onClick={handleConfirmSequentialUpload}
+                                    className="flex-[2] py-4 rounded-[20px] bg-gradient-to-r from-sky-500 to-indigo-600 text-white font-black text-lg shadow-lg shadow-indigo-200 flex items-center justify-center gap-3 hover:shadow-xl transition-shadow"
+                                >
+                                    <Images className="w-6 h-6" />
+                                    確認配對並上傳
+                                </motion.button>
+                            </div>
                         </motion.div>
                     </div>
                 )}
