@@ -514,6 +514,7 @@ const StudentManager = ({ cls, onBack, onStartGame }) => {
     const [newSeatNumber, setNewSeatNumber] = useState('');
     const [photoFile, setPhotoFile] = useState(null);
     const [isUploading, setIsUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0, filename: '' });
     const [searchQuery, setSearchQuery] = useState('');
     const [tagFilter, setTagFilter] = useState('all');
     const [editingTagsStudent, setEditingTagsStudent] = useState(null);
@@ -708,17 +709,16 @@ const StudentManager = ({ cls, onBack, onStartGame }) => {
     // 確認流水號配對並開始上傳
     const handleConfirmSequentialUpload = async () => {
         if (!sequentialPreview) return;
-        // 先解構保存所有需要的值，再清除 state（避免 React 非同步更新問題）
         const { pairs, prematched } = sequentialPreview;
-
-        // 清除 Object URL 以免記憶體洩漏
         pairs.forEach(p => URL.revokeObjectURL(p.previewUrl));
-
         setSequentialPreview(null);
         setIsUploading(true);
+        setUploadProgress({ current: 0, total: pairs.length, filename: '' });
 
         let successCount = 0;
-        for (const { file, student } of pairs) {
+        for (let i = 0; i < pairs.length; i++) {
+            const { file, student } = pairs[i];
+            setUploadProgress({ current: i + 1, total: pairs.length, filename: file.name });
             try {
                 await updateStudentPhoto(student.id, file);
                 successCount++;
@@ -727,6 +727,7 @@ const StudentManager = ({ cls, onBack, onStartGame }) => {
             }
         }
         setIsUploading(false);
+        setUploadProgress({ current: 0, total: 0, filename: '' });
 
         alert(`🎉 照片同步完成！\n✅ 流水號配對上傳：${successCount} 位${prematched > 0 ? `\n✅ 語意匹配上傳：${prematched} 位` : ''}`);
     };
@@ -1027,17 +1028,67 @@ const StudentManager = ({ cls, onBack, onStartGame }) => {
                     </div>
 
                     {isUploading && (
-                        <div className="fixed inset-0 bg-indigo-900/20 backdrop-blur-sm z-50 flex flex-col items-center justify-center">
+                        <div className="fixed inset-0 bg-indigo-950/40 backdrop-blur-md z-50 flex flex-col items-center justify-center p-4">
                             <motion.div
-                                initial={{ scale: 0.8, opacity: 0 }}
-                                animate={{ scale: 1, opacity: 1 }}
-                                className="bg-white p-10 rounded-[48px] shadow-2xl flex flex-col items-center border-4 border-white/50"
+                                initial={{ scale: 0.85, opacity: 0, y: 20 }}
+                                animate={{ scale: 1, opacity: 1, y: 0 }}
+                                className="bg-white rounded-[40px] shadow-2xl border-4 border-white/60 p-10 w-full max-w-sm flex flex-col items-center gap-5"
                             >
-                                <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: "linear" }} className="mb-6 p-4 bg-indigo-50 rounded-full">
-                                    <Sparkles className="w-12 h-12 text-indigo-500" />
-                                </motion.div>
-                                <p className="font-black text-indigo-900 text-xl">正在處理檔案...</p>
-                                <p className="text-indigo-400 font-bold text-sm mt-2">請稍候，這不會花太久時間</p>
+                                {/* 標題 */}
+                                <div className="flex flex-col items-center gap-2">
+                                    <motion.div
+                                        animate={{ rotate: 360 }}
+                                        transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+                                        className="p-3 bg-indigo-50 rounded-full mb-1"
+                                    >
+                                        <Sparkles className="w-8 h-8 text-indigo-500" />
+                                    </motion.div>
+                                    <p className="font-black text-indigo-900 text-xl">正在上傳照片</p>
+                                    <p className="text-indigo-400 font-bold text-xs">
+                                        {uploadProgress.filename
+                                            ? uploadProgress.filename
+                                            : '壓縮並同步至雲端...'}
+                                    </p>
+                                </div>
+
+                                {/* 進度條 */}
+                                {uploadProgress.total > 0 && (
+                                    <div className="w-full flex flex-col gap-2">
+                                        <div className="flex justify-between text-xs font-black">
+                                            <span className="text-indigo-400">
+                                                {uploadProgress.current} / {uploadProgress.total} 張
+                                            </span>
+                                            <span className="text-indigo-600">
+                                                {Math.round((uploadProgress.current / uploadProgress.total) * 100)}%
+                                            </span>
+                                        </div>
+                                        <div className="w-full h-3 bg-indigo-100 rounded-full overflow-hidden">
+                                            <motion.div
+                                                className="h-full rounded-full bg-gradient-to-r from-sky-400 via-indigo-500 to-violet-500"
+                                                initial={{ width: 0 }}
+                                                animate={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }}
+                                                transition={{ duration: 0.4, ease: 'easeOut' }}
+                                            />
+                                        </div>
+                                        {/* 小點點縮圖指示器 */}
+                                        <div className="flex gap-1 flex-wrap justify-center mt-1">
+                                            {Array.from({ length: Math.min(uploadProgress.total, 20) }, (_, i) => (
+                                                <div
+                                                    key={i}
+                                                    className={`w-2 h-2 rounded-full transition-colors duration-300 ${i < uploadProgress.current
+                                                            ? 'bg-indigo-500'
+                                                            : i === uploadProgress.current
+                                                                ? 'bg-sky-400 animate-pulse'
+                                                                : 'bg-indigo-100'
+                                                        }`}
+                                                />
+                                            ))}
+                                            {uploadProgress.total > 20 && (
+                                                <span className="text-[10px] text-indigo-300 font-bold self-center">+{uploadProgress.total - 20}</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
                             </motion.div>
                         </div>
                     )}
