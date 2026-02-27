@@ -35,7 +35,8 @@ import {
     Download,
     Info,
     RotateCcw,
-    XCircle
+    XCircle,
+    AlertTriangle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useClasses, useStudents } from './hooks/useStore';
@@ -380,19 +381,71 @@ const Dashboard = ({ onNavigate }) => (
     </div>
 );
 
+const ConfirmDialog = ({ isOpen, title, message, onConfirm, onCancel, confirmText = "確定", cancelText = "取消", type = "danger" }) => (
+    <AnimatePresence>
+        {isOpen && (
+            <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    onClick={onCancel}
+                    className="absolute inset-0 bg-indigo-950/40 backdrop-blur-sm"
+                />
+                <motion.div
+                    initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                    animate={{ scale: 1, opacity: 1, y: 0 }}
+                    exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                    className="clay-card !p-8 max-w-sm w-full bg-white relative z-10 border-4 border-white shadow-2xl flex flex-col items-center text-center"
+                >
+                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-6 shadow-sm ${type === 'danger' ? 'bg-rose-50 text-rose-500' : 'bg-indigo-50 text-indigo-500'}`}>
+                        {type === 'danger' ? <Trash2 className="w-8 h-8" /> : <AlertTriangle className="w-8 h-8" />}
+                    </div>
+
+                    <h3 className="text-2xl font-black text-indigo-950 mb-2">{title}</h3>
+                    <p className="text-slate-500 font-bold mb-8 leading-relaxed">{message}</p>
+
+                    <div className="flex gap-4 w-full">
+                        <button
+                            onClick={onCancel}
+                            className="flex-1 py-4 bg-slate-50 text-slate-400 rounded-2xl font-black text-sm hover:bg-slate-100 transition-colors shadow-sm"
+                        >
+                            {cancelText}
+                        </button>
+                        <button
+                            onClick={onConfirm}
+                            className={`flex-1 py-4 rounded-2xl font-black text-sm text-white shadow-lg transition-transform hover:scale-105 active:scale-95 ${type === 'danger' ? 'bg-rose-500 hover:bg-rose-600 shadow-rose-200' : 'bg-indigo-500 hover:bg-indigo-600 shadow-indigo-200'}`}
+                        >
+                            {confirmText}
+                        </button>
+                    </div>
+                </motion.div>
+            </div>
+        )}
+    </AnimatePresence>
+);
+
 const ClassManager = ({ userId, onBack, onStartGame, onNavigate, mode = 'manage' }) => {
     const { classes, addClass, deleteClass } = useClasses(userId);
     const [newClassName, setNewClassName] = useState('');
+    const [confirmConfig, setConfirmConfig] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
 
-    const handleDeleteClass = async (e, id, name) => {
+    const handleDeleteClass = (e, id, name) => {
         e.stopPropagation();
-        if (confirm(`確定要刪除「${name}」班級嗎？此動作不可復原。`)) {
-            try {
-                await deleteClass(id);
-            } catch (err) {
-                console.error("Delete class failed:", err);
+        setConfirmConfig({
+            isOpen: true,
+            title: '確定刪除班級？',
+            message: `您即將刪除「${name}」班級，這將會移除該班級所有的學生資料與特訓紀錄，此動作不可復原。`,
+            onConfirm: async () => {
+                try {
+                    await deleteClass(id);
+                    setConfirmConfig(prev => ({ ...prev, isOpen: false }));
+                } catch (err) {
+                    console.error("Delete class failed:", err);
+                    alert("刪除失敗，請稍後再試。");
+                }
             }
-        }
+        });
     };
     const [selectedClass, setSelectedClass] = useState(null);
     const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0, filename: '' });
@@ -436,97 +489,111 @@ const ClassManager = ({ userId, onBack, onStartGame, onNavigate, mode = 'manage'
     }
 
     return (
-        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center w-full">
-            <div className="w-full max-w-5xl flex justify-between items-center px-2 mb-8">
-                <button onClick={onBack} className="btn-icon-back">
-                    <ArrowLeft className="w-8 h-8" />
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-7xl px-4 mx-auto">
+            {/* Header Area */}
+            <div className="flex justify-between items-center mb-6">
+                <button onClick={onBack} className="btn-icon-back !w-12 !h-12 !rounded-2xl shadow-sm">
+                    <ArrowLeft className="w-6 h-6" />
                 </button>
-            </div>
-
-            {/* Hero Section / Create Class */}
-            <div className="clay-card clay-card-indigo p-12 text-center max-w-lg w-full mx-auto mb-20 relative overflow-hidden text-white border-white/20">
-                {/* Decorative Background Elements */}
-                <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-                <div className="absolute bottom-0 left-0 w-48 h-48 bg-purple-500/30 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
-
-                <div className="relative z-10">
-                    <div className="w-20 h-20 bg-white/10 backdrop-blur-md rounded-3xl mx-auto mb-6 flex items-center justify-center shadow-lg border border-white/20">
-                        <Sparkles className="w-10 h-10 text-yellow-300" />
-                    </div>
-                    <h2 className="text-4xl font-black text-white mb-2 tracking-tight">啟動新班級</h2>
-                    <p className="text-indigo-200 font-bold mb-8">建立一個新的挑戰空間</p>
-
-                    <form onSubmit={(e) => { e.preventDefault(); if (newClassName.trim()) { addClass(newClassName); setNewClassName(''); } }} className="flex flex-col gap-4">
-                        <div className="relative group/input">
-                            <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none z-10">
-                                <GraduationCap className="h-6 w-6 text-indigo-400 group-focus-within/input:text-indigo-600 transition-colors" />
-                            </div>
-                            <input
-                                type="text"
-                                placeholder="例如：3年2班"
-                                className="clay-input-primary"
-                                value={newClassName}
-                                onChange={(e) => setNewClassName(e.target.value)}
-                            />
-                        </div>
-                        <button type="submit" className="btn-clay bg-white text-indigo-600 hover:bg-indigo-50 w-full h-16 text-xl shadow-xl border-none group/btn relative overflow-hidden">
-                            <span className="relative z-10 flex items-center justify-center gap-2">
-                                <Zap className="w-6 h-6" /> 立即建立
-                            </span>
-                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-indigo-100/50 to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-700" />
-                        </button>
-                    </form>
-                </div>
-            </div>
-
-            {/* Class List Grid Header + Import Area */}
-            <div className="w-full max-w-6xl px-4 flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
-                <h3 className="text-2xl font-black text-indigo-950 flex items-center gap-3">
+                <h2 className="text-3xl font-black text-indigo-950 flex items-center gap-3">
                     <Users className="w-8 h-8 text-indigo-500" />
-                    現有班級 <span className="text-indigo-300 text-lg">({classes.length})</span>
-                </h3>
-
-                <label className="btn-glass-pill cursor-pointer hover:scale-105 transition-transform flex items-center gap-2 text-indigo-600 border-indigo-200">
-                    <Upload className="w-5 h-5" />
-                    <span className="font-bold">從 ZIP 匯入備份</span>
-                    <input type="file" className="hidden" accept=".zip" onChange={handleImportBackup} />
-                </label>
+                    班級編制中心
+                </h2>
+                <div className="w-12" /> {/* Spacer */}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 w-full max-w-6xl px-4 pb-20">
-                {classes.map((cls, index) => (
-                    <motion.div
-                        key={cls.id}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.1 }}
-                        whileHover={{ y: -10, scale: 1.02 }}
-                        onClick={() => setSelectedClass(cls)}
-                        className="clay-card p-8 flex flex-col items-center cursor-pointer w-full relative group overflow-hidden border-4 border-white hover:border-indigo-100 transition-all"
-                    >
-                        {/* Hover Gradient Background */}
-                        <div className="absolute inset-0 bg-gradient-to-br from-indigo-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-
-                        <button
-                            onClick={(e) => handleDeleteClass(e, cls.id, cls.name)}
-                            className="absolute top-4 right-4 w-10 h-10 bg-white rounded-full text-rose-300 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 z-20 shadow-sm"
-                            title="刪除班級"
-                        >
-                            <Trash2 className="w-5 h-5" />
-                        </button>
-
-                        <div className="w-24 h-24 bg-indigo-50 rounded-[32px] flex items-center justify-center mb-6 shadow-md group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 relative z-10 border-4 border-white">
-                            <GraduationCap className="text-indigo-500 w-12 h-12 group-hover:text-indigo-600 transition-colors" />
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
+                {/* Left Sidebar: Create & Import */}
+                <div className="lg:col-span-1 space-y-6">
+                    <div className="clay-card clay-card-indigo p-6 text-white border-white/20 relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
+                        <div className="relative z-10">
+                            <div className="flex items-center gap-3 mb-4">
+                                <Sparkles className="w-6 h-6 text-yellow-300" />
+                                <h3 className="text-xl font-black">建立班級</h3>
+                            </div>
+                            <form onSubmit={(e) => { e.preventDefault(); if (newClassName.trim()) { addClass(newClassName); setNewClassName(''); } }} className="space-y-4">
+                                <div className="relative">
+                                    <GraduationCap className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-indigo-400" />
+                                    <input
+                                        type="text"
+                                        placeholder="例如：3年2班"
+                                        className="w-full bg-white/10 border-2 border-white/20 rounded-2xl py-3 pl-12 pr-4 text-white font-bold placeholder:text-indigo-200 outline-none focus:border-white/50 transition-all text-sm"
+                                        value={newClassName}
+                                        onChange={(e) => setNewClassName(e.target.value)}
+                                    />
+                                </div>
+                                <button type="submit" className="w-full py-3 bg-white text-indigo-600 rounded-2xl font-black text-sm shadow-lg hover:bg-indigo-50 transition-colors flex items-center justify-center gap-2 group">
+                                    <Zap className="w-4 h-4" /> 快速建立
+                                </button>
+                            </form>
                         </div>
+                    </div>
 
-                        <h3 className="text-3xl font-black text-indigo-950 relative z-10">{cls.name}</h3>
+                    <div className="clay-card p-6 bg-indigo-50/50 border-2 border-indigo-100 flex flex-col gap-4">
+                        <h4 className="font-black text-indigo-900 flex items-center gap-2">
+                            <Upload className="w-5 h-5 text-indigo-500" />
+                            資料還原
+                        </h4>
+                        <p className="text-xs text-slate-400 font-bold leading-relaxed">
+                            從 ZIP 備份檔恢復班級名單與學生照片資料。
+                        </p>
+                        <label className="btn-clay btn-clay-primary !py-3 !px-4 !rounded-2xl !text-xs w-full cursor-pointer text-center">
+                            從 ZIP 匯入備份
+                            <input type="file" className="hidden" accept=".zip" onChange={handleImportBackup} />
+                        </label>
+                    </div>
+                </div>
 
-                        <div className="mt-6 flex items-center gap-2 relative z-10 opacity-60 group-hover:opacity-100 transition-opacity">
-                            <span className="text-indigo-400 font-bold text-sm uppercase tracking-widest">Enter Class</span>
-                            <ArrowRight className="w-4 h-4 text-indigo-400 group-hover:translate-x-1 transition-transform" />
-                        </div>
-                    </motion.div>
-                ))}
+                {/* Right Area: Class Grid */}
+                <div className="lg:col-span-3">
+                    <div className="flex items-center justify-between mb-6 px-2">
+                        <h3 className="font-black text-slate-400 uppercase tracking-widest text-xs">
+                            現有班級列表 ({classes.length})
+                        </h3>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+                        {classes.map((cls, index) => (
+                            <motion.div
+                                key={cls.id}
+                                initial={{ opacity: 0, y: 15 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: index * 0.05 }}
+                                whileHover={{ y: -5 }}
+                                onClick={() => setSelectedClass(cls)}
+                                className="clay-card p-6 flex flex-col items-center cursor-pointer w-full relative group transition-all border-4 border-white hover:border-indigo-100 shadow-sm"
+                            >
+                                <button
+                                    onClick={(e) => handleDeleteClass(e, cls.id, cls.name)}
+                                    className="absolute top-3 right-3 w-8 h-8 bg-white/80 backdrop-blur-sm rounded-xl text-rose-300 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 z-20 shadow-sm"
+                                    title="刪除"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
+
+                                <div className="w-16 h-16 bg-indigo-50 rounded-2xl flex items-center justify-center mb-4 shadow-sm group-hover:scale-105 transition-transform duration-300 relative z-10 border-2 border-white">
+                                    <GraduationCap className="text-indigo-500 w-8 h-8" />
+                                </div>
+
+                                <h3 className="text-xl font-black text-indigo-950 relative z-10">{cls.name}</h3>
+
+                                <div className="mt-4 flex items-center gap-2 relative z-10 opacity-30 group-hover:opacity-100 transition-opacity">
+                                    <span className="text-indigo-400 font-bold text-[10px] uppercase tracking-widest">Open Manager</span>
+                                    <ArrowRight className="w-3 h-3 text-indigo-400" />
+                                </div>
+                            </motion.div>
+                        ))}
+
+                        {classes.length === 0 && (
+                            <div className="col-span-full py-20 flex flex-col items-center justify-center border-4 border-dashed border-slate-100 rounded-[48px] text-slate-300">
+                                <Users className="w-16 h-16 mb-4 opacity-20" />
+                                <p className="font-black text-xl">尚無班級資料</p>
+                                <p className="text-sm font-bold mt-2">請從左側建立或匯入您的第一個班級</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
             </div>
 
             {/* Import Backup Loading Overlay */}
@@ -561,6 +628,15 @@ const ClassManager = ({ userId, onBack, onStartGame, onNavigate, mode = 'manage'
                     </motion.div>
                 </div>
             )}
+
+            <ConfirmDialog
+                isOpen={confirmConfig.isOpen}
+                title={confirmConfig.title}
+                message={confirmConfig.message}
+                onConfirm={confirmConfig.onConfirm}
+                onCancel={() => setConfirmConfig(prev => ({ ...prev, isOpen: false }))}
+                confirmText="確認刪除"
+            />
         </motion.div>
     );
 };

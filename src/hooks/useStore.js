@@ -75,7 +75,7 @@ export const useClasses = (userId) => {
             setLoading(false);
 
             // 3. 同步回 IndexedDB
-            saveClasses(data).catch(e => console.error("Save classes cache failed:", e));
+            saveClasses(data, userId).catch(e => console.error("Save classes cache failed:", e));
         }, (error) => {
             console.error("Classes snapshot error:", error);
             setLoading(false);
@@ -140,7 +140,7 @@ export const useStudents = (classId) => {
             setLoading(false);
 
             // 3. 同步回 IndexedDB 並啟動照片快取
-            saveStudents(data).catch(e => console.error("Save students cache failed:", e));
+            saveStudents(data, classId).catch(e => console.error("Save students cache failed:", e));
             cachePhotos(data);
         }, (error) => {
             console.error("Students snapshot error:", error);

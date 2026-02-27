@@ -1,5 +1,5 @@
 const DB_NAME = 'recognize_db';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 /**
  * 初始化 IndexedDB
@@ -12,8 +12,15 @@ export const initDB = () => {
             const db = event.target.result;
 
             // 建立班級 Store
+            let classStore;
             if (!db.objectStoreNames.contains('classes')) {
-                db.createObjectStore('classes', { keyPath: 'id' });
+                classStore = db.createObjectStore('classes', { keyPath: 'id' });
+            } else {
+                classStore = event.target.transaction.objectStore('classes');
+            }
+
+            if (!classStore.indexNames.contains('teacherUid')) {
+                classStore.createIndex('teacherUid', 'teacherUid', { unique: false });
             }
 
             // 建立學生 Store
@@ -49,12 +56,33 @@ const performAction = async (storeName, mode, action) => {
 };
 
 // --- Classes ---
-export const saveClasses = async (classes) => {
+export const saveClasses = async (classes, userId) => {
     const db = await initDB();
-    const transaction = db.transaction('classes', 'readwrite');
-    const store = transaction.objectStore('classes');
-    classes.forEach(cls => store.put(cls));
     return new Promise((resolve, reject) => {
+        const transaction = db.transaction('classes', 'readwrite');
+        const store = transaction.objectStore('classes');
+
+        // 1. 清除已不存在於列表中的該使用者舊快取
+        if (userId) {
+            const index = store.index('teacherUid');
+            const request = index.getAll(userId);
+            request.onsuccess = (e) => {
+                const existing = e.target.result;
+                const newIds = new Set(classes.map(c => c.id));
+                existing.forEach(oldCls => {
+                    if (!newIds.has(oldCls.id)) {
+                        store.delete(oldCls.id);
+                    }
+                });
+
+                // 2. 寫入新資料
+                classes.forEach(cls => store.put(cls));
+            };
+        } else {
+            // 退回機制：若無 userId 則僅執行 put
+            classes.forEach(cls => store.put(cls));
+        }
+
         transaction.oncomplete = () => resolve();
         transaction.onerror = () => reject(transaction.error);
     });
@@ -63,12 +91,32 @@ export const saveClasses = async (classes) => {
 export const getClasses = () => performAction('classes', 'readonly', store => store.getAll());
 
 // --- Students ---
-export const saveStudents = async (students) => {
+export const saveStudents = async (students, classId) => {
     const db = await initDB();
-    const transaction = db.transaction('students', 'readwrite');
-    const store = transaction.objectStore('students');
-    students.forEach(std => store.put(std));
     return new Promise((resolve, reject) => {
+        const transaction = db.transaction('students', 'readwrite');
+        const store = transaction.objectStore('students');
+
+        // 1. 清除已不存在於列表中的該班級舊快取
+        if (classId) {
+            const index = store.index('classId');
+            const request = index.getAll(classId);
+            request.onsuccess = (e) => {
+                const existing = e.target.result;
+                const newIds = new Set(students.map(s => s.id));
+                existing.forEach(oldStd => {
+                    if (!newIds.has(oldStd.id)) {
+                        store.delete(oldStd.id);
+                    }
+                });
+
+                // 2. 寫入新資料
+                students.forEach(std => store.put(std));
+            };
+        } else {
+            students.forEach(std => store.put(std));
+        }
+
         transaction.oncomplete = () => resolve();
         transaction.onerror = () => reject(transaction.error);
     });

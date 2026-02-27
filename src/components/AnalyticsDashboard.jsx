@@ -66,12 +66,12 @@ const AnalyticsDashboard = ({ scores, students }) => {
     }, [students]);
 
     return (
-        <div className="w-full space-y-8">
+        <div className="w-full flex flex-col md:flex-row gap-6 items-stretch">
             {/* 成長曲線圖 */}
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="clay-card p-8 bg-white/80 backdrop-blur-sm"
+                className="flex-[3] min-w-0 w-full clay-card p-6 bg-white/80 backdrop-blur-sm shadow-indigo-100/30 overflow-hidden"
             >
                 <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-3">
@@ -98,7 +98,7 @@ const AnalyticsDashboard = ({ scores, students }) => {
                     {chartWidth > 0 && (
                         <LineChart
                             width={chartWidth}
-                            height={Math.round(chartWidth / 3)}
+                            height={Math.max(160, Math.round(chartWidth / 2.5))}
                             data={growthData}
                             margin={{ top: 8, right: 8, left: -16, bottom: 0 }}
                         >
@@ -129,7 +129,7 @@ const AnalyticsDashboard = ({ scores, students }) => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
-                className="clay-card p-8 bg-white/80 backdrop-blur-sm border-orange-100"
+                className="flex-[1] min-w-0 w-full md:max-w-[340px] clay-card p-6 bg-white/80 backdrop-blur-sm border-orange-100 shadow-orange-100/20"
             >
                 <div className="flex items-center gap-3 mb-6">
                     <div className="p-3 bg-orange-100 rounded-xl text-orange-500">

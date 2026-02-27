@@ -108,7 +108,7 @@ const StatsView = ({ userId, onBack }) => {
 
             {selectedClass ? (
                 <>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full max-w-5xl mb-12">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full max-w-5xl mb-8">
                         <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} className="clay-card p-8 flex flex-col items-center border-emerald-50">
                             <div className="w-12 h-12 bg-emerald-100 rounded-2xl flex items-center justify-center mb-4 text-emerald-600"><TrendingUp /></div>
                             <p className="text-xs font-black text-emerald-400 uppercase tracking-widest mb-1">平均得分</p>
