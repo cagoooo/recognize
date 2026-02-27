@@ -15,6 +15,33 @@ import {
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { compressImage } from '../lib/imageUtils';
+import {
+    getClasses,
+    saveClasses,
+    getStudentsByClass,
+    saveStudents,
+    savePhotoBlob,
+    getPhotoBlob
+} from '../lib/db';
+
+/**
+ * 背景照片快取機制
+ */
+const cachePhotos = async (students) => {
+    for (const student of students) {
+        if (!student.photoUrl) continue;
+        try {
+            const existing = await getPhotoBlob(student.id);
+            if (!existing) {
+                const response = await fetch(student.photoUrl);
+                const blob = await response.blob();
+                await savePhotoBlob(student.id, blob);
+            }
+        } catch (err) {
+            console.warn(`Cache photo failed for ${student.id}:`, err);
+        }
+    }
+};
 
 export const useClasses = (userId) => {
     const [classes, setClasses] = useState([]);
@@ -22,13 +49,32 @@ export const useClasses = (userId) => {
 
     useEffect(() => {
         if (!userId) return;
+
+        // 1. SWR: 優先從 IndexedDB 載入快取
+        const loadCache = async () => {
+            try {
+                const cached = await getClasses();
+                if (cached && cached.length > 0) {
+                    setClasses(cached);
+                    setLoading(false);
+                }
+            } catch (err) {
+                console.error("Load classes cache failed:", err);
+            }
+        };
+        loadCache();
+
+        // 2. Start Firestore Snapshot for real-time updates
         const q = query(collection(db, 'classes'), where('teacherUid', '==', userId));
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            // 使用 localeCompare 進行自然語言排序 (如 601, 602...)
             data.sort((a, b) => a.name.localeCompare(b.name, 'zh-TW', { numeric: true }));
+
             setClasses(data);
             setLoading(false);
+
+            // 3. 同步回 IndexedDB
+            saveClasses(data).catch(e => console.error("Save classes cache failed:", e));
         }, (error) => {
             console.error("Classes snapshot error:", error);
             setLoading(false);
@@ -57,18 +103,38 @@ export const useStudents = (classId) => {
 
     useEffect(() => {
         if (!classId) return;
+
+        // 1. SWR: 優先從 IndexedDB 載入快生快取
+        const loadCache = async () => {
+            try {
+                const cached = await getStudentsByClass(classId);
+                if (cached && cached.length > 0) {
+                    setStudents(cached);
+                    setLoading(false);
+                }
+            } catch (err) {
+                console.error("Load students cache failed:", err);
+            }
+        };
+        loadCache();
+
+        // 2. Start Firestore Snapshot
         const q = query(collection(db, 'students'), where('classId', '==', classId));
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            // 優先依座號排序，次之依姓名
             data.sort((a, b) => {
                 const sA = String(a.seatNumber || "");
                 const sB = String(b.seatNumber || "");
                 if (sA !== sB) return sA.localeCompare(sB, 'zh-TW', { numeric: true });
                 return a.name.localeCompare(b.name, 'zh-TW');
             });
+
             setStudents(data);
             setLoading(false);
+
+            // 3. 同步回 IndexedDB 並啟動照片快取
+            saveStudents(data).catch(e => console.error("Save students cache failed:", e));
+            cachePhotos(data);
         }, (error) => {
             console.error("Students snapshot error:", error);
             setLoading(false);

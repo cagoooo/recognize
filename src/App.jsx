@@ -36,8 +36,9 @@ import {
     XCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useClasses, useStudents } from './hooks/useStore';
-import { useGeminiVision } from './hooks/useGeminiVision';
+import { useCachedPhoto } from './hooks/useCachedPhoto';
+import { useLongPress } from './hooks/useLongPress';
+import QuickPreview from './components/QuickPreview';
 import GameMode from './components/GameMode';
 import StatsView from './components/StatsView';
 
@@ -575,6 +576,9 @@ const StudentManager = ({ cls, onBack, onStartGame }) => {
     const [groupingStrategy, setGroupingStrategy] = useState('random'); // random, hetero, interest
     const [groupSize, setGroupSize] = useState(4);
     const [groups, setGroups] = useState([]);
+
+    // 預覽狀態
+    const [previewingStudent, setPreviewingStudent] = useState(null);
 
     // 收集所有標籤
     const allTags = React.useMemo(() => {
@@ -1201,8 +1205,14 @@ const StudentManager = ({ cls, onBack, onStartGame }) => {
                         student={student}
                         onEdit={() => setEditingTagsStudent(student)}
                         onDelete={(id) => handleDeleteStudent(id, student.name)}
+                        onLongPress={(std) => setPreviewingStudent(std)}
                     />
                 ))}
+            </div>
+
+            {/* 快速預覽組件 (鬆開時清除狀態) */}
+            <div onMouseUp={() => setPreviewingStudent(null)} onTouchEnd={() => setPreviewingStudent(null)}>
+                <QuickPreview student={previewingStudent} isOpen={!!previewingStudent} />
             </div>
 
             {/* Grouping Modal */}
@@ -1434,14 +1444,23 @@ const StudentManager = ({ cls, onBack, onStartGame }) => {
     );
 };
 
-const StudentCard = ({ student, onEdit, onDelete }) => {
+const StudentCard = ({ student, onEdit, onDelete, onLongPress }) => {
+    const photoSrc = useCachedPhoto(student.id, student.photoUrl);
+
+    // 整合長按交互
+    const longPressProps = useLongPress(
+        () => onLongPress(student),
+        () => onEdit(),
+        { delay: 450 }
+    );
+
     return (
         <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             whileHover={{ y: -8, scale: 1.05, zIndex: 20 }}
             className="flex flex-col items-center group relative cursor-pointer"
-            onClick={onEdit}
+            {...longPressProps}
         >
             {/* Card Container - Pro Max Premium */}
             <div className="w-full aspect-[3/4] clay-card p-0 overflow-hidden relative border-4 border-white group-hover:border-indigo-200 shadow-clay-card group-hover:shadow-indigo-500/30 transition-all duration-300 rounded-[32px] bg-white/80 backdrop-blur-xl">
@@ -1459,8 +1478,8 @@ const StudentCard = ({ student, onEdit, onDelete }) => {
 
                 {/* Photo Area */}
                 <div className="w-full h-full bg-gradient-to-br from-indigo-50 to-purple-50 relative group-hover:from-indigo-100 group-hover:to-purple-100 transition-colors duration-500">
-                    {student.photoUrl ? (
-                        <img src={student.photoUrl} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt={student.name} />
+                    {photoSrc ? (
+                        <img src={photoSrc} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt={student.name} />
                     ) : (
                         <div className="w-full h-full flex flex-col items-center justify-center relative overflow-hidden pb-8">
                             <div className="absolute inset-0 bg-gradient-to-tr from-indigo-100/50 via-white/20 to-purple-100/50 opacity-50" />
