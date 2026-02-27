@@ -1,7 +1,7 @@
 {
   "name": "recognize",
   "private": true,
-  "version": "3.6.1",
+  "version": "3.7.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -14,9 +14,11 @@
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
+    "file-saver": "^2.0.5",
     "firebase": "^12.9.0",
     "framer-motion": "^12.34.0",
     "html2canvas": "^1.4.1",
+    "jszip": "^3.10.1",
     "lucide-react": "^0.563.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

@@ -5,6 +5,7 @@ import { useAuth } from './hooks/useAuth';
 import { filterStudents } from './lib/search';
 import { groupRandomly, groupHeterogeneously, groupByInterest } from './lib/grouping';
 import { sortFilesByNatural } from './lib/sorting';
+import { exportClassBackup, importClassBackup } from './lib/backup';
 import {
     Users,
     Play,
@@ -31,6 +32,7 @@ import {
     Zap,
     ArrowRight,
     Upload,
+    Download,
     Info,
     RotateCcw,
     XCircle
@@ -95,19 +97,41 @@ const App = () => {
         setActiveView('home');
     };
 
-    const startTraining = (cls, targetStudents, allStudents = null) => {
+    const startTraining = (cls, targetStudents, allStudents = null, gameMode = 'classic') => {
         if (targetStudents.length < 1) {
             alert("該班級學生人數不足，無法開始練習");
             return;
         }
         setGameState({
-            active: true,
-            classId: cls.id,
-            className: cls.name,
-            targetStudents,
-            allStudents: allStudents || targetStudents
+            view: 'game',
+            currentClass: cls,
+            targetStudents: targetStudents,
+            allStudents: allStudents || targetStudents,
+            gameMode: gameMode
         });
         setActiveView('game');
+    };
+
+    const handleImportBackup = async (e) => {
+        if (!user) return;
+        const file = e.target.files[0];
+        if (!file) return;
+
+        try {
+            // Need a way to show progress globally, could reuse uploadProgress
+            setUploadProgress({ current: 0, total: 100, filename: '解壓並還原資料中...' });
+            setIsUploading(true);
+            await importClassBackup(file, user.uid, (current, total, msg) => {
+                setUploadProgress({ current, total, filename: msg });
+            });
+            alert('班級備份匯入成功！請重新整理或按回上一頁查看新班級。');
+        } catch (error) {
+            console.error("Import backup error:", error);
+            alert(`匯入失敗: ${error.message}`);
+        } finally {
+            setIsUploading(false);
+            e.target.value = '';
+        }
     };
 
     if (loading) {
@@ -241,7 +265,7 @@ const App = () => {
                             {activeView === 'home' && <Dashboard onNavigate={setActiveView} key="dash" />}
                             {activeView === 'play' && <ClassManager userId={user.uid} mode="play" onBack={() => setActiveView('home')} onNavigate={setActiveView} onStartGame={startTraining} key="play" />}
                             {activeView === 'manage' && <ClassManager userId={user.uid} mode="manage" onBack={() => setActiveView('home')} onNavigate={setActiveView} onStartGame={startTraining} key="manage" />}
-                            {activeView === 'game' && <GameMode targetStudents={gameState.targetStudents} allStudents={gameState.allStudents} className={gameState.className} onBack={() => setActiveView('home')} key="game" />}
+                            {activeView === 'game' && <GameMode targetStudents={gameState.targetStudents} allStudents={gameState.allStudents || []} className={gameState.currentClass ? gameState.currentClass.name : ''} gameMode={gameState.gameMode} onBack={() => setActiveView('home')} key="game" />}
                             {activeView === 'stats' && <StatsView userId={user.uid} onBack={() => setActiveView('home')} key="stats" />}
                         </motion.div>
                     )}
@@ -371,7 +395,29 @@ const ClassManager = ({ userId, onBack, onStartGame, onNavigate, mode = 'manage'
         }
     };
     const [selectedClass, setSelectedClass] = useState(null);
+    const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0, filename: '' });
+    const [isUploading, setIsUploading] = useState(false);
 
+    const handleImportBackup = async (e) => {
+        if (!userId) return;
+        const file = e.target.files[0];
+        if (!file) return;
+
+        try {
+            setUploadProgress({ current: 0, total: 100, filename: '解壓並還原資料中...' });
+            setIsUploading(true);
+            const newClassId = await importClassBackup(file, userId, (current, total, msg) => {
+                setUploadProgress({ current, total, filename: msg });
+            });
+            alert('班級備份匯入成功！系統將自動整理資料。');
+        } catch (error) {
+            console.error("Import backup error:", error);
+            alert(`匯入失敗: ${error.message}`);
+        } finally {
+            setIsUploading(false);
+            e.target.value = '';
+        }
+    };
 
     if (selectedClass) {
         if (mode === 'play') {
@@ -379,19 +425,19 @@ const ClassManager = ({ userId, onBack, onStartGame, onNavigate, mode = 'manage'
                 <QuickStart
                     cls={selectedClass}
                     onBack={() => setSelectedClass(null)}
-                    onStartGame={(target, all) => onStartGame(selectedClass, target, all)}
+                    onStartGame={(target, all, gameMode) => onStartGame(selectedClass, target, all, gameMode)}
                     onNavigate={onNavigate}
                 />
             );
         }
         return (
-            <StudentManager cls={selectedClass} onBack={() => setSelectedClass(null)} onStartGame={(target, all) => onStartGame(selectedClass, target, all)} />
+            <StudentManager cls={selectedClass} onBack={() => setSelectedClass(null)} onStartGame={(target, all, gameMode) => onStartGame(selectedClass, target, all, gameMode)} uploadProps={{ isUploading, setIsUploading, uploadProgress, setUploadProgress }} />
         );
     }
 
     return (
         <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center w-full">
-            <div className="w-full max-w-5xl flex justify-start px-2 mb-8">
+            <div className="w-full max-w-5xl flex justify-between items-center px-2 mb-8">
                 <button onClick={onBack} className="btn-icon-back">
                     <ArrowLeft className="w-8 h-8" />
                 </button>
@@ -433,11 +479,19 @@ const ClassManager = ({ userId, onBack, onStartGame, onNavigate, mode = 'manage'
                 </div>
             </div>
 
-            {/* Class List Grid */}
-            <h3 className="text-2xl font-black text-indigo-950 mb-8 flex items-center gap-3">
-                <Users className="w-8 h-8 text-indigo-500" />
-                現有班級 <span className="text-indigo-300 text-lg">({classes.length})</span>
-            </h3>
+            {/* Class List Grid Header + Import Area */}
+            <div className="w-full max-w-6xl px-4 flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+                <h3 className="text-2xl font-black text-indigo-950 flex items-center gap-3">
+                    <Users className="w-8 h-8 text-indigo-500" />
+                    現有班級 <span className="text-indigo-300 text-lg">({classes.length})</span>
+                </h3>
+
+                <label className="btn-glass-pill cursor-pointer hover:scale-105 transition-transform flex items-center gap-2 text-indigo-600 border-indigo-200">
+                    <Upload className="w-5 h-5" />
+                    <span className="font-bold">從 ZIP 匯入備份</span>
+                    <input type="file" className="hidden" accept=".zip" onChange={handleImportBackup} />
+                </label>
+            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 w-full max-w-6xl px-4 pb-20">
                 {classes.map((cls, index) => (
@@ -474,6 +528,39 @@ const ClassManager = ({ userId, onBack, onStartGame, onNavigate, mode = 'manage'
                     </motion.div>
                 ))}
             </div>
+
+            {/* Import Backup Loading Overlay */}
+            {isUploading && (
+                <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+                    <motion.div
+                        initial={{ scale: 0.8, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        className="bg-white rounded-[32px] p-8 max-w-sm w-full shadow-2xl flex flex-col items-center text-center border-4 border-indigo-100"
+                    >
+                        <div className="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center mb-6 shadow-inner">
+                            <Sparkles className="w-10 h-10 text-indigo-500 animate-spin-slow" />
+                        </div>
+                        <h3 className="text-2xl font-black text-indigo-950 mb-2">正在還原資料</h3>
+                        <p className="text-slate-500 font-bold mb-6 text-sm">{uploadProgress.filename}</p>
+
+                        {uploadProgress.total > 0 && typeof uploadProgress.total === 'number' && typeof uploadProgress.current === 'number' && (
+                            <div className="w-full">
+                                <div className="flex justify-between text-sm font-bold text-indigo-400 mb-2">
+                                    <span>還原進度</span>
+                                    <span>{uploadProgress.current} / {uploadProgress.total}</span>
+                                </div>
+                                <div className="w-full h-3 bg-indigo-50 rounded-full overflow-hidden">
+                                    <motion.div
+                                        className="h-full bg-indigo-500"
+                                        initial={{ width: 0 }}
+                                        animate={{ width: `${Math.min(100, (uploadProgress.current / uploadProgress.total) * 100)}%` }}
+                                    />
+                                </div>
+                            </div>
+                        )}
+                    </motion.div>
+                </div>
+            )}
         </motion.div>
     );
 };
@@ -481,18 +568,23 @@ const ClassManager = ({ userId, onBack, onStartGame, onNavigate, mode = 'manage'
 const QuickStart = ({ cls, onBack, onStartGame, onNavigate }) => {
     const { students, loading } = useStudents(cls.id);
     const [errorStatus, setErrorStatus] = useState(null); // 'empty', 'insufficient'
+    const [selectedMode, setSelectedMode] = useState('classic'); // 'classic', 'reverse', 'extreme'
+    const [isPreparing, setIsPreparing] = useState(true);
 
     useEffect(() => {
         if (!loading) {
             if (students.length === 0) {
                 setErrorStatus('empty');
+                setIsPreparing(false);
             } else if (students.length < 4) {
                 setErrorStatus('insufficient');
+                setIsPreparing(false);
             } else {
-                onStartGame(students);
+                // 不再自動開始，讓使用者選模式
+                setIsPreparing(false);
             }
         }
-    }, [loading, students, onStartGame]);
+    }, [loading, students]);
 
     if (loading) {
         return (
@@ -547,7 +639,62 @@ const QuickStart = ({ cls, onBack, onStartGame, onNavigate }) => {
         );
     }
 
-    return null;
+    const modes = [
+        { id: 'classic', name: '經典模式', desc: '看照片猜姓名，最穩健的基礎特訓', icon: <Users className="w-5 h-5" />, color: 'bg-indigo-600' },
+        { id: 'reverse', name: '反向挑戰', desc: '看姓名找照片，考驗連結記憶', icon: <ArrowLeft className="w-5 h-5" />, color: 'bg-emerald-600' },
+        { id: 'extreme', name: '極限混淆', desc: '干擾項相似度極高，大師級挑戰', icon: <Sparkles className="w-5 h-5" />, color: 'bg-rose-600' }
+    ];
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col items-center py-10 w-full max-w-2xl mx-auto px-4"
+        >
+            <div className="clay-card w-full p-8 md:p-12">
+                <div className="flex items-center gap-4 mb-8">
+                    <button onClick={onBack} className="p-3 bg-slate-100 rounded-2xl hover:bg-slate-200 transition-colors">
+                        <ArrowLeft className="w-5 h-5 text-slate-600" />
+                    </button>
+                    <div>
+                        <h3 className="text-2xl font-black text-indigo-950">選擇特訓模式</h3>
+                        <p className="text-indigo-400 font-bold text-sm">目標班級：{cls.name}</p>
+                    </div>
+                </div>
+
+                <div className="flex flex-col gap-4 mb-10">
+                    {modes.map((m) => (
+                        <button
+                            key={m.id}
+                            onClick={() => setSelectedMode(m.id)}
+                            className={`flex items-center gap-5 p-6 rounded-[32px] border-4 transition-all text-left ${selectedMode === m.id
+                                ? 'bg-indigo-50 border-indigo-200 shadow-xl'
+                                : 'bg-white border-transparent hover:border-slate-100 shadow-md'
+                                }`}
+                        >
+                            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-lg ${m.color} text-white`}>
+                                {m.icon}
+                            </div>
+                            <div className="flex-1">
+                                <p className={`font-black text-lg ${selectedMode === m.id ? 'text-indigo-950' : 'text-slate-700'}`}>{m.name}</p>
+                                <p className="text-sm font-bold text-slate-400">{m.desc}</p>
+                            </div>
+                            <div className={`w-6 h-6 rounded-full border-4 flex items-center justify-center ${selectedMode === m.id ? 'border-indigo-600 bg-indigo-600' : 'border-slate-200'}`}>
+                                {selectedMode === m.id && <div className="w-2 h-2 bg-white rounded-full" />}
+                            </div>
+                        </button>
+                    ))}
+                </div>
+
+                <button
+                    onClick={() => onStartGame(students, students, selectedMode)}
+                    className="btn-clay btn-clay-primary w-full py-6 text-xl flex items-center justify-center gap-3"
+                >
+                    <Trophy className="w-6 h-6" /> 啟動練習模式
+                </button>
+            </div>
+        </motion.div>
+    );
 };
 
 const StudentManager = ({ cls, onBack, onStartGame }) => {
@@ -776,15 +923,38 @@ const StudentManager = ({ cls, onBack, onStartGame }) => {
         alert(`🎉 照片同步完成！\n✅ 流水號配對上傳：${successCount} 位${prematched > 0 ? `\n✅ 語意匹配上傳：${prematched} 位` : ''}`);
     };
 
+    const handleExportBackup = async () => {
+        if (students.length === 0) {
+            alert('班級沒有學生資料可供匯出。');
+            return;
+        }
+        try {
+            setIsUploading(true);
+            setUploadProgress({ current: 0, total: 0, filename: '正在收集影像與打包ZIP備份中...' });
+            await exportClassBackup(cls.id, cls.name, students);
+        } catch (error) {
+            console.error("Export backup failed:", error);
+            alert(`匯出備份失敗: ${error.message}`);
+        } finally {
+            setIsUploading(false);
+            setUploadProgress({ current: 0, total: 0, filename: '' });
+        }
+    };
+
     return (
         <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center w-full">
             <div className="flex items-center justify-between w-full max-w-4xl mb-12 px-4">
                 <button onClick={onBack} className="btn-icon-back">
                     <ArrowLeft className="w-8 h-8" />
                 </button>
-                <div className="text-right">
-                    <h2 className="text-4xl font-black text-indigo-950">{cls.name}</h2>
-                    <p className="text-indigo-400 font-black uppercase text-[10px] tracking-[0.4em] mt-2">Active Students: {students.length}</p>
+                <div className="flex flex-col items-end gap-3">
+                    <div className="text-right">
+                        <h2 className="text-4xl font-black text-indigo-950">{cls.name}</h2>
+                        <p className="text-indigo-400 font-black uppercase text-[10px] tracking-[0.4em] mt-2">Active Students: {students.length}</p>
+                    </div>
+                    <button onClick={handleExportBackup} className="btn-glass-pill flex items-center gap-2 text-indigo-600 hover:scale-105 transition-transform text-sm px-4 py-1">
+                        <Download className="w-4 h-4" /> <span className="font-bold">匯出班級備份</span>
+                    </button>
                 </div>
             </div>
 
@@ -932,7 +1102,7 @@ const StudentManager = ({ cls, onBack, onStartGame }) => {
                                         <span className="relative z-10">確認加入</span>
                                     </>
                                 )}
-                                <div className="absolute inset-0 bg-gradient-to-r from-indigo-50 via-white to-indigo-50 opacity-0 group-hover/btn:opacity-50 transition-opacity duration-500" />
+                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-indigo-100/50 to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-700" />
                             </button>
                         </form>
                     </div>

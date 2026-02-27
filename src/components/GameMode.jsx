@@ -20,7 +20,7 @@ import { useVoiceCoach } from '../hooks/useVoiceCoach';
 import SocialShareCard from './SocialShareCard';
 import { Share2 } from 'lucide-react';
 
-const GameMode = ({ targetStudents, allStudents, className, onBack }) => {
+const GameMode = ({ targetStudents, allStudents, className, onBack, gameMode = 'classic' }) => {
     const [studentsQueue, setStudentsQueue] = useState([...targetStudents].sort(() => 0.5 - Math.random()));
     const [solvedCount, setSolvedCount] = useState(0);
     const [currentQuestion, setCurrentQuestion] = useState(null);
@@ -69,7 +69,19 @@ const GameMode = ({ targetStudents, allStudents, className, onBack }) => {
         const correct = allStudents.find(s => s.id === queueHead.id) || queueHead;
 
         let others = allStudents.filter(s => s.id !== correct.id);
-        others = others.sort(() => 0.5 - Math.random()).slice(0, 3);
+
+        // 如果是極限模式，優先尋找具有相同 tag 的學生
+        if (gameMode === 'extreme') {
+            others = others.sort((a, b) => {
+                const commonA = a.tags ? a.tags.filter(t => correct.tags?.includes(t)).length : 0;
+                const commonB = b.tags ? b.tags.filter(t => correct.tags?.includes(t)).length : 0;
+                return commonB - commonA; // 降序
+            });
+        } else {
+            others = others.sort(() => 0.5 - Math.random());
+        }
+
+        others = others.slice(0, 3);
         const allOptions = [...others, correct].sort(() => 0.5 - Math.random());
 
         setCurrentQuestion(correct);
@@ -280,16 +292,21 @@ const GameMode = ({ targetStudents, allStudents, className, onBack }) => {
                     key={currentQuestion?.id}
                     initial={{ y: 30, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
-                    className="game-photo-wrap mb-12"
+                    className={`mb-6 md:mb-8 ${gameMode === 'reverse' ? 'w-full max-w-2xl px-4' : 'game-photo-wrap'}`}
                 >
-                    {currentQuestion?.photoUrl ? (
+                    {gameMode === 'reverse' ? (
+                        <div className="w-full flex flex-col items-center justify-center bg-white/40 backdrop-blur-md rounded-[40px] shadow-2xl border-4 md:border-8 border-white p-6 md:p-8">
+                            <span className="text-[8px] md:text-[10px] font-black text-indigo-400 uppercase tracking-[0.4em] mb-2 md:mb-3">Identity Target</span>
+                            <span className="text-4xl md:text-6xl font-black text-indigo-950 drop-shadow-sm leading-tight text-center break-all">{currentQuestion?.name}</span>
+                        </div>
+                    ) : currentQuestion?.photoUrl ? (
                         <img src={currentQuestion.photoUrl} className="w-full h-full object-cover" alt="" />
                     ) : (
                         <div className="w-full h-full bg-indigo-50 flex items-center justify-center"><Users className="w-24 h-24 text-indigo-100" /></div>
                     )}
                     <AnimatePresence>
                         {feedback && (
-                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-white/40 backdrop-blur-md flex items-center justify-center">
+                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-white/40 backdrop-blur-md flex items-center justify-center rounded-[50px] z-50">
                                 <div className="bg-white p-8 rounded-[50px] shadow-3xl border-8 border-white">
                                     {feedback === 'correct' ? <CheckCircle2 className="w-20 h-20 text-emerald-500" /> : <XCircle className="w-20 h-20 text-rose-500" />}
                                 </div>
@@ -298,13 +315,13 @@ const GameMode = ({ targetStudents, allStudents, className, onBack }) => {
                     </AnimatePresence>
                 </motion.div>
 
-                <div className="text-center mb-10">
-                    <div className="inline-flex items-center gap-2 px-6 py-2 bg-rose-50 rounded-full mb-6">
-                        <Heart className="w-4 h-4 text-rose-500 fill-rose-500 animate-pulse" />
-                        <span className="text-[10px] font-black text-rose-400 uppercase tracking-widest">Question Mastery</span>
+                <div className="text-center mb-6 md:mb-8">
+                    <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-rose-50 rounded-full mb-4">
+                        <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500 animate-pulse" />
+                        <span className="text-[9px] font-black text-rose-400 uppercase tracking-widest">Question Mastery</span>
                     </div>
-                    <h3 className="text-3xl font-black text-indigo-950 mb-3 px-4 flex items-center justify-center gap-3">
-                        這位學生的姓名是？
+                    <h3 className="text-xl md:text-2xl font-black text-indigo-950 mb-2 px-4 flex items-center justify-center gap-2 md:gap-3">
+                        {gameMode === 'reverse' ? '請點選對應的照片選項：' : '這位學生的姓名是？'}
                         <button onClick={() => speak(currentQuestion.name)} className="p-2 rounded-full bg-indigo-50 hover:bg-indigo-100 text-indigo-400 transition-colors">
                             <Volume2 className="w-5 h-5" />
                         </button>
@@ -374,24 +391,32 @@ const GameMode = ({ targetStudents, allStudents, className, onBack }) => {
                         </AnimatePresence>
                     </div>
 
-                    <p className="text-indigo-400 font-bold uppercase tracking-[0.3em] text-[10px] mt-6">TAP THE CORRECT IDENTITY</p>
+                    <p className="text-indigo-400 font-bold uppercase tracking-[0.2em] text-[10px] mt-4 md:mt-6">{gameMode === 'reverse' ? 'SELECT THE MATCHING PHOTO' : 'TAP THE CORRECT IDENTITY'}</p>
                 </div>
 
-                <div className="game-option-grid px-4">
+                <div className={`w-full px-4 ${gameMode === 'reverse' ? 'grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4' : 'game-option-grid'}`}>
                     {options.map((opt, idx) => (
                         <motion.button
                             key={`${opt.id}-${idx}`}
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
                             onClick={() => handleAnswer(opt.id)}
                             disabled={!!feedback}
-                            className={`game-btn-clay ${feedback === 'correct' && opt.id === currentQuestion.id ? 'bg-emerald-500 text-white !border-emerald-400 !shadow-emerald-200' :
+                            className={`${gameMode === 'reverse' ? 'p-0 overflow-hidden aspect-square md:aspect-[3/4] rounded-2xl md:rounded-3xl border-2 md:border-4' : 'game-btn-clay'} ${feedback === 'correct' && opt.id === currentQuestion.id ? 'bg-emerald-500 text-white !border-emerald-400 !shadow-emerald-200' :
                                 feedback === 'wrong' && opt.id === currentQuestion.id ? 'bg-emerald-500 text-white !border-emerald-400' :
                                     feedback === 'wrong' && opt.id !== currentQuestion.id ? 'bg-slate-50 text-slate-300 !border-slate-100 opacity-50' :
-                                        'bg-white text-indigo-950 hover:bg-indigo-50/50'
+                                        gameMode === 'reverse' ? 'bg-white border-white shadow-xl' : 'bg-white text-indigo-950 hover:bg-indigo-50/50'
                                 }`}
                         >
-                            {opt.name}
+                            {gameMode === 'reverse' ? (
+                                opt.photoUrl ? (
+                                    <img src={opt.photoUrl} className="w-full h-full object-cover" alt={opt.name} />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center bg-indigo-50 text-indigo-200"><Users className="w-10 h-10" /></div>
+                                )
+                            ) : (
+                                opt.name
+                            )}
                         </motion.button>
                     ))}
                 </div>
