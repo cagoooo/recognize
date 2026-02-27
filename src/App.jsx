@@ -36,6 +36,8 @@ import {
     XCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useClasses, useStudents } from './hooks/useStore';
+import { useGeminiVision } from './hooks/useGeminiVision';
 import { useCachedPhoto } from './hooks/useCachedPhoto';
 import { useLongPress } from './hooks/useLongPress';
 import QuickPreview from './components/QuickPreview';
