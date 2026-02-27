@@ -230,7 +230,7 @@ const GameMode = ({ targetStudents, allStudents, className, onBack }) => {
     }
 
     return (
-        <div className="flex flex-col items-center pt-44 md:pt-56 pb-6 w-full">
+        <div className="flex flex-col items-center pt-32 md:pt-40 pb-6 w-full">
             <div className="flex flex-wrap items-center justify-between w-full max-w-4xl mb-8 md:mb-12 px-2 md:px-4 gap-y-4">
                 <button onClick={onBack} className="btn-icon-back">
                     <ArrowLeft className="w-6 h-6 md:w-8 md:h-8" />

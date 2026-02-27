@@ -48,6 +48,25 @@ const App = () => {
     const dropdownRef = useRef(null);
     const [gameState, setGameState] = useState({ active: false, classId: null, className: '', targetStudents: [], allStudents: [] });
 
+    // --- Header Idle Logic ---
+    const [isHeaderActive, setIsHeaderActive] = useState(true);
+    const headerTimeoutRef = useRef(null);
+
+    const resetHeaderTimer = () => {
+        setIsHeaderActive(true);
+        if (headerTimeoutRef.current) clearTimeout(headerTimeoutRef.current);
+        headerTimeoutRef.current = setTimeout(() => {
+            setIsHeaderActive(false);
+        }, 3000); // 3 seconds idle
+    };
+
+    useEffect(() => {
+        resetHeaderTimer();
+        return () => {
+            if (headerTimeoutRef.current) clearTimeout(headerTimeoutRef.current);
+        };
+    }, []);
+
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -99,8 +118,7 @@ const App = () => {
     }
 
     return (
-        <div className="min-h-screen flex flex-col items-center pb-20 overflow-x-hidden">
-            {/* Dynamic Background Layer */}
+        <div className="min-h-screen relative overflow-hidden flex flex-col items-center pb-20 overflow-x-hidden">
             <div className="aurora-bg">
                 <div className="aurora-blob blob-1" />
                 <div className="aurora-blob blob-2" />
@@ -108,12 +126,25 @@ const App = () => {
                 <div className="aurora-blob blob-4" />
             </div>
 
-            <header className="fixed top-6 left-0 right-0 w-full px-4 flex justify-center pointer-events-none" style={{ zIndex: 99999 }}>
-                <div className="nav-capsule pointer-events-auto relative" style={{ zIndex: 100000 }}>
+            <header
+                className="fixed top-6 left-0 right-0 w-full px-4 flex justify-center pointer-events-none transition-all duration-1000"
+                style={{
+                    zIndex: 99999,
+                    opacity: isHeaderActive ? 1 : 0.2,
+                    transform: isHeaderActive ? 'translateY(0)' : 'translateY(-5px) scale(0.98)',
+                    filter: isHeaderActive ? 'none' : 'blur(2px)'
+                }}
+                onMouseEnter={() => setIsHeaderActive(true)}
+                onMouseLeave={resetHeaderTimer}
+            >
+                <div className="nav-capsule pointer-events-auto relative shadow-2xl" style={{ zIndex: 100000 }}>
                     <motion.div
                         whileHover={{ scale: 1.05 }}
                         className="brand-section cursor-pointer relative z-[10002]"
-                        onClick={() => setActiveView('home')}
+                        onClick={() => {
+                            setActiveView('home');
+                            setIsHeaderActive(true);
+                        }}
                     >
                         <div className="brand-logo-clay relative overflow-hidden group">
                             <GraduationCap className="text-white w-6 h-6 relative z-10" />
@@ -537,7 +568,7 @@ const StudentManager = ({ cls, onBack, onStartGame }) => {
 
     // 流水號配對預覽 State
     const [sequentialPreview, setSequentialPreview] = useState(null);
-    // sequentialPreview: { pairs: [{file, student}], unmatchedFiles: File[] } | null
+    // sequentialPreview: {pairs: [{file, student}], unmatchedFiles: File[] } | null
 
     // Grouping State
     const [showGroupingModal, setShowGroupingModal] = useState(false);
