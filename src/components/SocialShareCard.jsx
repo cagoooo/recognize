@@ -53,13 +53,13 @@ const SocialShareCard = ({ score, total, className, onClose }) => {
     const cardStyle = {
         width: '100%',
         background: 'linear-gradient(145deg, #312e81 0%, #4c1d95 40%, #1e1b4b 100%)',
-        borderRadius: 28,
-        padding: '24px 20px',
+        borderRadius: 24,
+        padding: '20px 16px',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'space-between',
-        gap: 20,
+        gap: 16,
         position: 'relative',
         overflow: 'hidden',
         boxSizing: 'border-box',
@@ -68,23 +68,25 @@ const SocialShareCard = ({ score, total, className, onClose }) => {
 
     return (
         <div style={{
-            position: 'fixed', inset: 0, zIndex: 50,
-            display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-            background: 'rgba(0,0,0,0.85)',
-            padding: '16px 16px',
+            position: 'fixed', inset: 0, zIndex: 100,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'rgba(0,0,0,0.9)',
+            padding: '20px 12px',
             overflowY: 'auto',
+            WebkitOverflowScrolling: 'touch',// For smooth mobile scrolling
         }}>
             <div style={{
                 background: '#fff',
-                borderRadius: 40,
-                padding: 20,
-                maxWidth: 400,
+                borderRadius: 32,
+                padding: '16px 16px 20px',
+                maxWidth: 360,
                 width: '100%',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: 16,
-                boxShadow: '0 32px 64px rgba(0,0,0,0.4)',
+                gap: 12,
+                boxShadow: '0 32px 64px rgba(0,0,0,0.5)',
                 margin: 'auto',
+                position: 'relative',
             }}>
                 {/* Header */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -139,27 +141,27 @@ const SocialShareCard = ({ score, total, className, onClose }) => {
                     {/* Trophy + Score */}
                     <div style={{ textAlign: 'center', zIndex: 1 }}>
                         <div style={{
-                            width: 84, height: 84,
+                            width: 64, height: 64,
                             background: 'rgba(255,255,255,0.1)',
                             border: '2px solid rgba(255,255,255,0.2)',
-                            borderRadius: 26,
+                            borderRadius: 20,
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            margin: '0 auto 12px',
+                            margin: '0 auto 8px',
                         }}>
-                            <Trophy size={42} color="#fde047" />
+                            <Trophy size={32} color="#fde047" />
                         </div>
-                        <div style={{ color: '#fff', fontSize: 64, fontWeight: 900, lineHeight: 1, letterSpacing: '-2px' }}>
+                        <div style={{ color: '#fff', fontSize: 52, fontWeight: 900, lineHeight: 1, letterSpacing: '-2px' }}>
                             {score}
                         </div>
-                        <div style={{ fontSize: 10, color: 'rgba(199,210,254,0.7)', marginTop: 2, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                        <div style={{ fontSize: 9, color: 'rgba(199,210,254,0.7)', marginTop: 2, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
                             POINTS
                         </div>
                         <div style={{
                             display: 'inline-flex', alignItems: 'center', gap: 6,
                             background: level.color,
                             color: '#1e1b4b',
-                            borderRadius: 999, padding: '4px 14px', marginTop: 10,
-                            fontWeight: 900, fontSize: 13,
+                            borderRadius: 999, padding: '3px 12px', marginTop: 8,
+                            fontWeight: 900, fontSize: 12,
                         }}>
                             {level.emoji} {level.label}
                         </div>
@@ -169,8 +171,8 @@ const SocialShareCard = ({ score, total, className, onClose }) => {
                     <div style={{
                         width: '100%',
                         background: 'rgba(0,0,0,0.3)',
-                        borderRadius: 16,
-                        padding: '12px 16px',
+                        borderRadius: 14,
+                        padding: '10px 12px',
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
@@ -179,13 +181,13 @@ const SocialShareCard = ({ score, total, className, onClose }) => {
                         border: '1px solid rgba(255,255,255,0.08)',
                     }}>
                         <div>
-                            <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.15em' }}>Teacher Tools</div>
-                            <div style={{ color: '#fff', fontSize: 13, fontWeight: 700 }}>阿凱老師的記憶特訓</div>
+                            <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 8, textTransform: 'uppercase', letterSpacing: '0.12em' }}>Teacher Tools</div>
+                            <div style={{ color: '#fff', fontSize: 11, fontWeight: 700 }}>阿凱老師的記憶特訓</div>
                         </div>
                         <img
                             src="https://api.qrserver.com/v1/create-qr-code/?size=64x64&data=https://github.com/cagoooo"
                             alt="QR"
-                            style={{ width: 32, height: 32, borderRadius: 6, background: '#fff', padding: 2, flexShrink: 0 }}
+                            style={{ width: 24, height: 24, borderRadius: 4, background: '#fff', padding: 2, flexShrink: 0 }}
                             crossOrigin="anonymous"
                         />
                     </div>
