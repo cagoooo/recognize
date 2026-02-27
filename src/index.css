@@ -999,6 +999,30 @@ body {
   gap: 10px;
   font-weight: 900;
   color: var(--text);
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .stats-pill {
+    padding: 8px 12px;
+    border-radius: 14px;
+    gap: 6px;
+    font-size: 0.75rem;
+  }
+
+  .stats-pill svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .stats-pill .text-xl {
+    font-size: 1rem;
+  }
+
+  /* 修正原生 CSS 不支援 [10px] 寫法引發的語法錯誤 */
+  .stats-pill span[class*="text-"] {
+    font-size: 8px;
+  }
 }
 
 @media (max-width: 640px) {

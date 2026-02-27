@@ -231,20 +231,20 @@ const GameMode = ({ targetStudents, allStudents, className, onBack }) => {
 
     return (
         <div className="flex flex-col items-center py-6 w-full">
-            <div className="flex items-center justify-between w-full max-w-4xl mb-12 px-4">
+            <div className="flex flex-wrap items-center justify-between w-full max-w-4xl mb-8 md:mb-12 px-2 md:px-4 gap-y-4">
                 <button onClick={onBack} className="btn-icon-back">
-                    <ArrowLeft className="w-8 h-8" />
+                    <ArrowLeft className="w-6 h-6 md:w-8 md:h-8" />
                 </button>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 md:gap-3">
                     <div className="stats-pill">
                         <Timer className="w-5 h-5 text-indigo-400" />
-                        <span className="text-sm">掌握度 {solvedCount} <span className="text-slate-300">/ {targetStudents.length}</span></span>
+                        <span className="text-xs md:text-sm">掌握度 {solvedCount} <span className="text-slate-300">/ {targetStudents.length}</span></span>
                     </div>
                     <div className="stats-pill !bg-indigo-600 !border-indigo-400 !text-white shadow-lg shadow-indigo-200/50">
                         <Trophy className="w-5 h-5 text-yellow-300 fill-yellow-300 drop-shadow-sm" />
                         <div className="flex flex-col items-start leading-none">
-                            <span className="text-[10px] text-indigo-200 font-bold uppercase tracking-wider">SCORE</span>
-                            <span className="text-xl font-black">{score}</span>
+                            <span className="text-[8px] md:text-[10px] text-indigo-200 font-bold uppercase tracking-wider">SCORE</span>
+                            <span className="text-lg md:text-xl font-black">{score}</span>
                         </div>
                     </div>
                     {isSupported && (
@@ -267,7 +267,7 @@ const GameMode = ({ targetStudents, allStudents, className, onBack }) => {
                             initial={{ scale: 0, rotate: -10 }}
                             animate={{ scale: 1, rotate: 0 }}
                             exit={{ scale: 0, rotate: 10 }}
-                            className="absolute -top-20 right-0 z-30"
+                            className="absolute -top-12 md:-top-20 right-0 z-30 transform scale-75 md:scale-100"
                         >
                             <div className="bg-yellow-400 text-yellow-900 px-6 py-2 rounded-full font-black text-2xl shadow-xl transform rotate-6 border-4 border-white">
                                 COMBO x{combo}!
