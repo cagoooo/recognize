@@ -55,6 +55,7 @@ export const useClasses = (userId) => {
             try {
                 const cached = await getClasses();
                 if (cached && cached.length > 0) {
+                    cached.sort((a, b) => a.name.localeCompare(b.name, 'zh-TW', { numeric: true }));
                     setClasses(cached);
                     setLoading(false);
                 }
@@ -109,6 +110,12 @@ export const useStudents = (classId) => {
             try {
                 const cached = await getStudentsByClass(classId);
                 if (cached && cached.length > 0) {
+                    cached.sort((a, b) => {
+                        const sA = String(a.seatNumber || "");
+                        const sB = String(b.seatNumber || "");
+                        if (sA !== sB) return sA.localeCompare(sB, 'zh-TW', { numeric: true });
+                        return a.name.localeCompare(b.name, 'zh-TW');
+                    });
                     setStudents(cached);
                     setLoading(false);
                 }
