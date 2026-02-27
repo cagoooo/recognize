@@ -57,7 +57,11 @@ export const useVoiceCoach = () => {
         utterance.onstart = () => setSpeaking(true);
         utterance.onend = () => setSpeaking(false);
         utterance.onerror = (e) => {
-            console.error("Speech synthesis error:", e);
+            if (e.error === 'not-allowed') {
+                console.warn("語音播放被瀏覽器攔截，請先與頁面互動。");
+            } else {
+                console.error("Speech synthesis error:", e);
+            }
             setSpeaking(false);
         };
 

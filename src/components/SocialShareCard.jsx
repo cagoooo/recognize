@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import html2canvas from 'html2canvas';
-import { Download, X, Trophy, Sparkles, Share2 } from 'lucide-react';
+import { Download, X, Trophy, Sparkles, Share2, Star } from 'lucide-react';
 
 const SocialShareCard = ({ score, total, className, onClose }) => {
     const cardRef = useRef(null);
@@ -10,108 +10,210 @@ const SocialShareCard = ({ score, total, className, onClose }) => {
         if (!cardRef.current) return;
         setIsGenerating(true);
         try {
-            // Wait a moment for fonts/images to be ready
-            await new Promise(resolve => setTimeout(resolve, 500));
+            await new Promise(resolve => setTimeout(resolve, 300));
 
             const canvas = await html2canvas(cardRef.current, {
                 useCORS: true,
-                scale: 3, // High resolution
-                backgroundColor: null,
-                logging: false
+                scale: 3,
+                backgroundColor: '#312e81',
+                logging: false,
+                // Strip ALL class-based styles from cloned DOM to prevent oklab
+                onclone: (_doc, el) => {
+                    el.querySelectorAll('*').forEach(node => {
+                        // Remove every class — inline styles carry the design
+                        node.removeAttribute('class');
+                        node.style.backdropFilter = 'none';
+                        node.style.webkitBackdropFilter = 'none';
+                        node.style.filter = 'none';
+                    });
+                },
             });
 
             const url = canvas.toDataURL('image/png');
             const link = document.createElement('a');
-            link.download = `recognize-stats-${Date.now()}.png`;
+            link.download = `recognize-${Date.now()}.png`;
             link.href = url;
             link.click();
         } catch (err) {
-            console.error("Screenshot failed", err);
-            alert("圖片生成失敗，請稍後再試。");
+            console.error('Screenshot failed', err);
+            alert('圖片生成失敗，請稍後再試。');
         } finally {
             setIsGenerating(false);
         }
     };
 
-    const percentage = Math.round((score / (total * 10 || 100)) * 100);
-    const title = percentage >= 90 ? "記憶大師" : percentage >= 80 ? "辨認高手" : percentage >= 60 ? "潛力新星" : "特訓學員";
+    const percentage = total > 0 ? Math.round((score / (total * 100)) * 100) : 0;
+    const level =
+        percentage >= 90 ? { label: '記憶大師', emoji: '👑', color: '#fbbf24' } :
+            percentage >= 80 ? { label: '辨認高手', emoji: '🏆', color: '#f97316' } :
+                percentage >= 60 ? { label: '潛力新星', emoji: '⭐', color: '#a78bfa' } :
+                    { label: '特訓學員', emoji: '💪', color: '#6ee7b7' };
+
+    // Card uses ONLY inline styles so html2canvas never sees oklab computed values
+    const cardStyle = {
+        width: '100%',
+        background: 'linear-gradient(145deg, #312e81 0%, #4c1d95 40%, #1e1b4b 100%)',
+        borderRadius: 28,
+        padding: '24px 20px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 20,
+        position: 'relative',
+        overflow: 'hidden',
+        boxSizing: 'border-box',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+    };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-300">
-            <div className="bg-white rounded-[40px] p-6 max-w-sm w-full flex flex-col gap-6 shadow-2xl transform scale-100 transition-all">
-                <div className="flex justify-between items-center">
-                    <h3 className="text-xl font-black text-indigo-950 flex items-center gap-2">
-                        <Share2 className="w-5 h-5 text-indigo-500" />
-                        分享戰績
+        <div style={{
+            position: 'fixed', inset: 0, zIndex: 50,
+            display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+            background: 'rgba(0,0,0,0.85)',
+            padding: '16px 16px',
+            overflowY: 'auto',
+        }}>
+            <div style={{
+                background: '#fff',
+                borderRadius: 40,
+                padding: 20,
+                maxWidth: 400,
+                width: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 16,
+                boxShadow: '0 32px 64px rgba(0,0,0,0.4)',
+                margin: 'auto',
+            }}>
+                {/* Header */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 900, color: '#1e1b4b', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Share2 size={18} color="#6366f1" /> 分享戰績
                     </h3>
-                    <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
-                        <X className="w-6 h-6 text-slate-400" />
+                    <button onClick={onClose} style={{
+                        background: '#f1f5f9', border: 'none', borderRadius: '50%',
+                        width: 36, height: 36, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                        <X size={18} color="#94a3b8" />
                     </button>
                 </div>
 
-                {/* Visual Card Area - This is what gets captured */}
-                <div ref={cardRef} className="aspect-[4/5] w-full bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-800 rounded-[32px] p-8 flex flex-col items-center justify-between text-white shadow-xl relative overflow-hidden border-[6px] border-white/20">
+                {/* ── Capture Zone ── */}
+                <div ref={cardRef} style={cardStyle}>
+                    {/* Decorative circles */}
+                    <div style={{
+                        position: 'absolute', top: -60, right: -60,
+                        width: 200, height: 200,
+                        borderRadius: '50%',
+                        background: 'rgba(139,92,246,0.35)',
+                    }} />
+                    <div style={{
+                        position: 'absolute', bottom: -40, left: -40,
+                        width: 160, height: 160,
+                        borderRadius: '50%',
+                        background: 'rgba(99,102,241,0.25)',
+                    }} />
 
-                    {/* Background decoration */}
-                    <div className="absolute inset-0 opacity-30">
-                        <div className="absolute top-0 right-0 w-64 h-64 bg-purple-400 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2" />
-                        <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-400 rounded-full blur-[80px] translate-y-1/2 -translate-x-1/2" />
+                    {/* Top badge */}
+                    <div style={{ textAlign: 'center', zIndex: 1 }}>
+                        <div style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 6,
+                            background: 'rgba(255,255,255,0.12)',
+                            border: '1px solid rgba(255,255,255,0.2)',
+                            borderRadius: 999, padding: '4px 14px', marginBottom: 12,
+                        }}>
+                            <Sparkles size={12} color="#fde047" />
+                            <span style={{ color: '#c7d2fe', fontSize: 10, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase' }}>
+                                Recognize App
+                            </span>
+                        </div>
+                        <div style={{ color: '#fff', fontSize: 22, fontWeight: 900 }}>
+                            {className || '自主特訓'}
+                        </div>
+                        <div style={{ color: 'rgba(199,210,254,0.7)', fontSize: 12, marginTop: 4 }}>
+                            {new Date().toLocaleDateString('zh-TW')}
+                        </div>
                     </div>
 
-                    {/* Pattern Overlay */}
-                    <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20" />
-
-                    {/* Content */}
-                    <div className="text-center z-10 w-full">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 backdrop-blur-md rounded-full mb-4 border border-white/20">
-                            <Sparkles className="w-3 h-3 text-yellow-300" />
-                            <span className="text-[10px] font-bold tracking-widest uppercase">Recognize App</span>
+                    {/* Trophy + Score */}
+                    <div style={{ textAlign: 'center', zIndex: 1 }}>
+                        <div style={{
+                            width: 84, height: 84,
+                            background: 'rgba(255,255,255,0.1)',
+                            border: '2px solid rgba(255,255,255,0.2)',
+                            borderRadius: 26,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            margin: '0 auto 12px',
+                        }}>
+                            <Trophy size={42} color="#fde047" />
                         </div>
-                        <h2 className="text-2xl font-black tracking-tight">{className || '自主特訓'}</h2>
-                        <p className="text-white/60 text-sm font-medium mt-1">{new Date().toLocaleDateString()}</p>
-                    </div>
-
-                    <div className="text-center z-10 relative">
-                        <div className="w-28 h-28 bg-gradient-to-tr from-white/20 to-white/5 backdrop-blur-xl rounded-[30px] flex items-center justify-center mx-auto mb-4 border border-white/40 shadow-lg relative group">
-                            <div className="absolute inset-0 bg-white/10 blur-xl rounded-full" />
-                            <Trophy className="w-14 h-14 text-yellow-300 drop-shadow-[0_0_15px_rgba(253,224,71,0.5)]" />
+                        <div style={{ color: '#fff', fontSize: 64, fontWeight: 900, lineHeight: 1, letterSpacing: '-2px' }}>
+                            {score}
                         </div>
-                        <div className="flex flex-col items-center">
-                            <h1 className="text-7xl font-black drop-shadow-xl tracking-tighter leading-none mb-2">
-                                {score}
-                            </h1>
-                            <div className="px-4 py-1.5 bg-white text-indigo-900 rounded-full font-black text-xs uppercase tracking-widest shadow-lg">
-                                {title}
-                            </div>
+                        <div style={{ fontSize: 10, color: 'rgba(199,210,254,0.7)', marginTop: 2, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                            POINTS
+                        </div>
+                        <div style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 6,
+                            background: level.color,
+                            color: '#1e1b4b',
+                            borderRadius: 999, padding: '4px 14px', marginTop: 10,
+                            fontWeight: 900, fontSize: 13,
+                        }}>
+                            {level.emoji} {level.label}
                         </div>
                     </div>
 
                     {/* Footer */}
-                    <div className="w-full bg-black/20 backdrop-blur-md rounded-2xl p-4 flex justify-between items-center z-10 border border-white/10">
-                        <div className="text-left">
-                            <p className="text-[10px] text-white/60 font-medium uppercase tracking-wider mb-0.5">Teacher Tools</p>
-                            <p className="text-sm font-bold">阿凱老師的記憶特訓</p>
+                    <div style={{
+                        width: '100%',
+                        background: 'rgba(0,0,0,0.3)',
+                        borderRadius: 16,
+                        padding: '12px 16px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        zIndex: 1,
+                        boxSizing: 'border-box',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                    }}>
+                        <div>
+                            <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.15em' }}>Teacher Tools</div>
+                            <div style={{ color: '#fff', fontSize: 13, fontWeight: 700 }}>阿凱老師的記憶特訓</div>
                         </div>
-                        <div className="w-10 h-10 bg-white rounded-lg p-1">
-                            <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://github.com/cagoooo" alt="QR" className="w-full h-full object-contain mix-blend-multiply" />
-                        </div>
+                        <img
+                            src="https://api.qrserver.com/v1/create-qr-code/?size=64x64&data=https://github.com/cagoooo"
+                            alt="QR"
+                            style={{ width: 32, height: 32, borderRadius: 6, background: '#fff', padding: 2, flexShrink: 0 }}
+                            crossOrigin="anonymous"
+                        />
                     </div>
                 </div>
 
-                {/* Actions */}
+                {/* Download button */}
                 <button
                     onClick={handleDownload}
                     disabled={isGenerating}
-                    className="btn-clay btn-clay-primary w-full py-4 text-lg flex items-center justify-center gap-2 group"
+                    style={{
+                        background: isGenerating ? '#a5b4fc' : 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: 20,
+                        padding: '16px 0',
+                        fontSize: 16,
+                        fontWeight: 800,
+                        cursor: isGenerating ? 'not-allowed' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 8,
+                        width: '100%',
+                        boxShadow: '0 8px 24px rgba(99,102,241,0.4)',
+                        transition: 'all 0.2s',
+                    }}
                 >
-                    {isGenerating ? (
-                        <>正在生成中...</>
-                    ) : (
-                        <>
-                            <Download className="w-5 h-5 group-hover:-translate-y-1 transition-transform" />
-                            下載戰績美圖
-                        </>
-                    )}
+                    {isGenerating ? '⏳ 生成中...' : <><Download size={18} /> 下載戰績美圖</>}
                 </button>
             </div>
         </div>

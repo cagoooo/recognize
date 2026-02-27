@@ -141,18 +141,24 @@ export const useStudents = (classId) => {
     return { students, loading, addStudent, batchAddStudents, updateStudentPhoto, deleteStudent, updateStudentTags, updateStudentDescription };
 };
 
+export const updateStudentAiHint = async (studentId, aiHint) => {
+    await updateDoc(doc(db, 'students', studentId), { aiHint });
+};
+
 export const useScores = (className) => {
     const [scores, setScores] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        let q = query(collection(db, 'scores'), orderBy('timestamp', 'desc'));
-        if (className) {
-            q = query(collection(db, 'scores'), where('className', '==', className), orderBy('timestamp', 'desc'));
-        }
+        // 只用 orderBy timestamp，不加 where，避免需要 Firestore 複合索引
+        const q = query(collection(db, 'scores'), orderBy('timestamp', 'desc'));
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
-            const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            let data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            // 若有指定班級則在 client-side 過濾，省去複合索引
+            if (className) {
+                data = data.filter(s => s.className === className);
+            }
             setScores(data);
             setLoading(false);
         }, (error) => {

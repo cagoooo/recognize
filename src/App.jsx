@@ -4,6 +4,7 @@ import { auth, db, googleProvider } from './firebase';
 import { useAuth } from './hooks/useAuth';
 import { filterStudents } from './lib/search';
 import { groupRandomly, groupHeterogeneously, groupByInterest } from './lib/grouping';
+import { sortFilesByNatural } from './lib/sorting';
 import {
     Users,
     Play,
@@ -31,6 +32,7 @@ import {
     ArrowRight,
     Upload,
     Info,
+    RotateCcw,
     XCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -44,7 +46,7 @@ const App = () => {
     const [activeView, setActiveView] = useState('home');
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const dropdownRef = useRef(null);
-    const [gameState, setGameState] = useState({ active: false, classId: null, className: '', students: [] });
+    const [gameState, setGameState] = useState({ active: false, classId: null, className: '', targetStudents: [], allStudents: [] });
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -71,12 +73,18 @@ const App = () => {
         setActiveView('home');
     };
 
-    const startTraining = (cls, students) => {
-        if (students.length < 4) {
-            alert("該班級學生人數不足 (需至少 4 位) 無法開始練習");
+    const startTraining = (cls, targetStudents, allStudents = null) => {
+        if (targetStudents.length < 1) {
+            alert("該班級學生人數不足，無法開始練習");
             return;
         }
-        setGameState({ active: true, classId: cls.id, className: cls.name, students });
+        setGameState({
+            active: true,
+            classId: cls.id,
+            className: cls.name,
+            targetStudents,
+            allStudents: allStudents || targetStudents
+        });
         setActiveView('game');
     };
 
@@ -199,7 +207,7 @@ const App = () => {
                             {activeView === 'home' && <Dashboard onNavigate={setActiveView} key="dash" />}
                             {activeView === 'play' && <ClassManager userId={user.uid} mode="play" onBack={() => setActiveView('home')} onNavigate={setActiveView} onStartGame={startTraining} key="play" />}
                             {activeView === 'manage' && <ClassManager userId={user.uid} mode="manage" onBack={() => setActiveView('home')} onNavigate={setActiveView} onStartGame={startTraining} key="manage" />}
-                            {activeView === 'game' && <GameMode students={gameState.students} className={gameState.className} onBack={() => setActiveView('home')} key="game" />}
+                            {activeView === 'game' && <GameMode targetStudents={gameState.targetStudents} allStudents={gameState.allStudents} className={gameState.className} onBack={() => setActiveView('home')} key="game" />}
                             {activeView === 'stats' && <StatsView userId={user.uid} onBack={() => setActiveView('home')} key="stats" />}
                         </motion.div>
                     )}
@@ -337,13 +345,13 @@ const ClassManager = ({ userId, onBack, onStartGame, onNavigate, mode = 'manage'
                 <QuickStart
                     cls={selectedClass}
                     onBack={() => setSelectedClass(null)}
-                    onStartGame={(students) => onStartGame(selectedClass, students)}
+                    onStartGame={(target, all) => onStartGame(selectedClass, target, all)}
                     onNavigate={onNavigate}
                 />
             );
         }
         return (
-            <StudentManager cls={selectedClass} onBack={() => setSelectedClass(null)} onStartGame={(students) => onStartGame(selectedClass, students)} />
+            <StudentManager cls={selectedClass} onBack={() => setSelectedClass(null)} onStartGame={(target, all) => onStartGame(selectedClass, target, all)} />
         );
     }
 
@@ -519,6 +527,13 @@ const StudentManager = ({ cls, onBack, onStartGame }) => {
     const [tagFilter, setTagFilter] = useState('all');
     const [editingTagsStudent, setEditingTagsStudent] = useState(null);
     const [showImportHelp, setShowImportHelp] = useState(false); // New state for help toggle
+    const studentListRef = useRef(null);
+
+    const scrollToStudentList = () => {
+        setTimeout(() => {
+            studentListRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+    };
 
     // 流水號配對預覽 State
     const [sequentialPreview, setSequentialPreview] = useState(null);
@@ -618,12 +633,6 @@ const StudentManager = ({ cls, onBack, onStartGame }) => {
         e.target.value = ''; // Reset input
     };
 
-    // 從檔名中提取最大數字作為排序依據（如 IMG_8860.JPG → 8860）
-    const extractSortKey = (filename) => {
-        const nums = filename.match(/\d+/g);
-        return nums ? Math.max(...nums.map(Number)) : 0;
-    };
-
     const handlePhotoUpload = async (e) => {
         const files = Array.from(e.target.files);
         if (files.length === 0) return;
@@ -651,10 +660,8 @@ const StudentManager = ({ cls, onBack, onStartGame }) => {
         // 條件：未匹配數量 > 50% 且至少有 2 張照片
         const unmatchedRatio = unmatched.length / files.length;
         if (files.length >= 2 && unmatchedRatio > 0.5 && students.length > 0) {
-            // 流水號模式：依檔名數字排序 ↔ 依座號排序學生
-            const sortedFiles = [...unmatched].sort((a, b) =>
-                extractSortKey(a.name) - extractSortKey(b.name)
-            );
+            // 流水號模式：依檔名自然排序 ↔ 依座號排序學生
+            const sortedFiles = sortFilesByNatural(unmatched);
             const sortedStudents = [...students]
                 .filter(s => !matched.some(m => m.student.id === s.id)) // 排除已匹配
                 .sort((a, b) => {
@@ -744,13 +751,13 @@ const StudentManager = ({ cls, onBack, onStartGame }) => {
                 </div>
             </div>
 
-            <div className="flex gap-4 mb-12 mx-auto">
+            <div className="flex flex-wrap justify-center gap-4 mb-12 mx-auto">
                 <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => onStartGame(filteredStudents)}
-                    disabled={filteredStudents.length < 4}
-                    className="btn-clay btn-clay-orange px-10 py-5 text-xl pulse-primary flex items-center"
+                    onClick={() => onStartGame(filteredStudents, students)}
+                    disabled={filteredStudents.length < 1}
+                    className={`btn-clay btn-clay-orange px-10 py-5 text-xl flex items-center ${filteredStudents.length < 1 ? 'opacity-50 grayscale cursor-not-allowed shadow-none' : 'pulse-primary'}`}
                 >
                     <Gamepad2 className="w-6 h-6 mr-2" />
                     {tagFilter === 'all' ? '啟動全班練習' : `啟動「${tagFilter}」特訓`}
@@ -793,11 +800,14 @@ const StudentManager = ({ cls, onBack, onStartGame }) => {
                     </div>
                 </div>
 
-                {/* Tag Filter (Horizontal Scroll) */}
-                <div className="w-full overflow-x-auto pb-4 scrollbar-hide -mx-4 px-4">
-                    <div className="flex gap-4 w-max mx-auto">
+                {/* Tag Filter (RWD Wrap) */}
+                <div className="w-full pb-4 px-4 overflow-visible">
+                    <div className="flex flex-wrap gap-3 justify-center">
                         <button
-                            onClick={() => setTagFilter('all')}
+                            onClick={() => {
+                                setTagFilter('all');
+                                scrollToStudentList();
+                            }}
                             className={`clay-pill ${tagFilter === 'all' ? 'active' : 'inactive'}`}
                         >
                             <Tag className="w-4 h-4" />
@@ -807,7 +817,10 @@ const StudentManager = ({ cls, onBack, onStartGame }) => {
                         {allTags.map(tag => (
                             <button
                                 key={tag}
-                                onClick={() => setTagFilter(tag)}
+                                onClick={() => {
+                                    setTagFilter(tag);
+                                    scrollToStudentList();
+                                }}
                                 className={`clay-pill ${tagFilter === tag ? 'active' : 'inactive'}`}
                             >
                                 <span className={`w-2 h-2 rounded-full ${tagFilter === tag ? 'bg-white' : 'bg-indigo-400'}`} />
@@ -1028,67 +1041,121 @@ const StudentManager = ({ cls, onBack, onStartGame }) => {
                     </div>
 
                     {isUploading && (
-                        <div className="fixed inset-0 bg-indigo-950/40 backdrop-blur-md z-50 flex flex-col items-center justify-center p-4">
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                            style={{ background: 'linear-gradient(135deg, rgba(79,70,229,0.6) 0%, rgba(168,85,247,0.5) 50%, rgba(14,165,233,0.5) 100%)', backdropFilter: 'blur(18px)' }}>
+                            {/* 背景光暈裝飾 */}
+                            <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                                <motion.div animate={{ scale: [1, 1.3, 1], opacity: [0.4, 0.7, 0.4] }} transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+                                    className="absolute -top-24 -left-24 w-72 h-72 rounded-full"
+                                    style={{ background: 'radial-gradient(circle, rgba(251,191,36,0.5) 0%, transparent 70%)' }} />
+                                <motion.div animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }} transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
+                                    className="absolute -bottom-24 -right-24 w-80 h-80 rounded-full"
+                                    style={{ background: 'radial-gradient(circle, rgba(236,72,153,0.45) 0%, transparent 70%)' }} />
+                                <motion.div animate={{ scale: [1, 1.15, 1], opacity: [0.25, 0.5, 0.25] }} transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
+                                    className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full"
+                                    style={{ background: 'radial-gradient(circle, rgba(99,102,241,0.3) 0%, transparent 70%)' }} />
+                            </div>
+                            {/* 主卡片 */}
                             <motion.div
-                                initial={{ scale: 0.85, opacity: 0, y: 20 }}
+                                initial={{ scale: 0.8, opacity: 0, y: 30 }}
                                 animate={{ scale: 1, opacity: 1, y: 0 }}
-                                className="bg-white rounded-[40px] shadow-2xl border-4 border-white/60 p-10 w-full max-w-sm flex flex-col items-center gap-5"
+                                transition={{ type: 'spring', stiffness: 260, damping: 22 }}
+                                className="relative w-full max-w-md bg-white rounded-[40px] overflow-hidden"
+                                style={{ border: '6px solid rgba(255,255,255,0.9)', boxShadow: '0 40px 80px rgba(79,70,229,0.3), inset 0 2px 0 rgba(255,255,255,0.8)' }}
                             >
-                                {/* 標題 */}
-                                <div className="flex flex-col items-center gap-2">
-                                    <motion.div
-                                        animate={{ rotate: 360 }}
-                                        transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
-                                        className="p-3 bg-indigo-50 rounded-full mb-1"
-                                    >
-                                        <Sparkles className="w-8 h-8 text-indigo-500" />
-                                    </motion.div>
-                                    <p className="font-black text-indigo-900 text-xl">正在上傳照片</p>
-                                    <p className="text-indigo-400 font-bold text-xs">
-                                        {uploadProgress.filename
-                                            ? uploadProgress.filename
-                                            : '壓縮並同步至雲端...'}
-                                    </p>
-                                </div>
-
-                                {/* 進度條 */}
-                                {uploadProgress.total > 0 && (
-                                    <div className="w-full flex flex-col gap-2">
-                                        <div className="flex justify-between text-xs font-black">
-                                            <span className="text-indigo-400">
-                                                {uploadProgress.current} / {uploadProgress.total} 張
-                                            </span>
-                                            <span className="text-indigo-600">
-                                                {Math.round((uploadProgress.current / uploadProgress.total) * 100)}%
-                                            </span>
-                                        </div>
-                                        <div className="w-full h-3 bg-indigo-100 rounded-full overflow-hidden">
+                                {/* 頂部彩虹通條 */}
+                                <div className="h-2 w-full" style={{ background: 'linear-gradient(90deg, #f59e0b, #ec4899, #8b5cf6, #6366f1, #06b6d4)' }} />
+                                <div className="p-7 sm:p-10 flex flex-col items-center gap-5">
+                                    {/* 旋轉圖示 + 標題 */}
+                                    <div className="flex flex-col items-center gap-3">
+                                        <div className="relative">
                                             <motion.div
-                                                className="h-full rounded-full bg-gradient-to-r from-sky-400 via-indigo-500 to-violet-500"
-                                                initial={{ width: 0 }}
-                                                animate={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }}
-                                                transition={{ duration: 0.4, ease: 'easeOut' }}
+                                                animate={{ rotate: 360 }}
+                                                transition={{ duration: 2.5, repeat: Infinity, ease: 'linear' }}
+                                                className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl sm:rounded-3xl flex items-center justify-center"
+                                                style={{ background: 'linear-gradient(135deg, #6366f1, #a855f7, #ec4899)', boxShadow: '0 12px 30px rgba(99,102,241,0.4)' }}
+                                            >
+                                                <Sparkles className="w-8 h-8 sm:w-10 sm:h-10 text-white drop-shadow" />
+                                            </motion.div>
+                                            <motion.div
+                                                animate={{ scale: [1, 1.4, 1], opacity: [0.6, 0, 0.6] }}
+                                                transition={{ duration: 1.8, repeat: Infinity }}
+                                                className="absolute inset-0 rounded-2xl sm:rounded-3xl"
+                                                style={{ background: 'linear-gradient(135deg, #6366f1, #a855f7)', filter: 'blur(12px)' }}
                                             />
                                         </div>
-                                        {/* 小點點縮圖指示器 */}
-                                        <div className="flex gap-1 flex-wrap justify-center mt-1">
-                                            {Array.from({ length: Math.min(uploadProgress.total, 20) }, (_, i) => (
-                                                <div
-                                                    key={i}
-                                                    className={`w-2 h-2 rounded-full transition-colors duration-300 ${i < uploadProgress.current
-                                                            ? 'bg-indigo-500'
-                                                            : i === uploadProgress.current
-                                                                ? 'bg-sky-400 animate-pulse'
-                                                                : 'bg-indigo-100'
-                                                        }`}
-                                                />
-                                            ))}
-                                            {uploadProgress.total > 20 && (
-                                                <span className="text-[10px] text-indigo-300 font-bold self-center">+{uploadProgress.total - 20}</span>
-                                            )}
+                                        <div className="text-center">
+                                            <p className="font-black text-indigo-950 text-xl sm:text-2xl tracking-tight">正在上傳照片</p>
+                                            <p className="text-indigo-400 font-bold text-xs sm:text-sm mt-1 truncate max-w-[260px] sm:max-w-[320px]">
+                                                {uploadProgress.filename || '壓縮並同步至雲端...'}
+                                            </p>
                                         </div>
                                     </div>
-                                )}
+                                    {/* 超大百分比 + 彩虹進度條 */}
+                                    {uploadProgress.total > 0 && (
+                                        <div className="w-full flex flex-col items-center gap-3">
+                                            <motion.div
+                                                key={Math.round((uploadProgress.current / uploadProgress.total) * 100)}
+                                                initial={{ scale: 0.7, opacity: 0 }}
+                                                animate={{ scale: 1, opacity: 1 }}
+                                                className="font-black leading-none select-none"
+                                                style={{
+                                                    fontSize: 'clamp(3.5rem, 13vw, 5.5rem)',
+                                                    background: 'linear-gradient(135deg, #f59e0b 0%, #ec4899 40%, #8b5cf6 70%, #06b6d4 100%)',
+                                                    WebkitBackgroundClip: 'text',
+                                                    WebkitTextFillColor: 'transparent',
+                                                    backgroundClip: 'text',
+                                                    filter: 'drop-shadow(0 4px 12px rgba(99,102,241,0.3))'
+                                                }}
+                                            >
+                                                {Math.round((uploadProgress.current / uploadProgress.total) * 100)}%
+                                            </motion.div>
+                                            <div className="flex items-center gap-2 text-sm font-black text-indigo-400 -mt-1">
+                                                <span className="text-indigo-600 text-base">{uploadProgress.current}</span>
+                                                <span className="opacity-40">/</span>
+                                                <span>{uploadProgress.total} 張</span>
+                                            </div>
+                                            <div className="w-full h-5 sm:h-6 rounded-full overflow-hidden"
+                                                style={{ background: 'linear-gradient(90deg, #e0e7ff, #ede9fe)', boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.08)' }}>
+                                                <motion.div
+                                                    className="h-full rounded-full relative overflow-hidden"
+                                                    initial={{ width: '0%' }}
+                                                    animate={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }}
+                                                    transition={{ duration: 0.5, ease: 'easeOut' }}
+                                                    style={{ background: 'linear-gradient(90deg, #f59e0b, #ec4899, #8b5cf6, #6366f1, #06b6d4)', boxShadow: '0 0 16px rgba(139,92,246,0.6)' }}
+                                                >
+                                                    <motion.div
+                                                        animate={{ x: ['-100%', '200%'] }}
+                                                        transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+                                                        className="absolute inset-0 w-1/3"
+                                                        style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent)' }}
+                                                    />
+                                                </motion.div>
+                                            </div>
+                                            <div className="flex gap-[5px] flex-wrap justify-center">
+                                                {Array.from({ length: Math.min(uploadProgress.total, 24) }, (_, i) => {
+                                                    const done = i < uploadProgress.current;
+                                                    const active = i === uploadProgress.current - 1;
+                                                    return (
+                                                        <motion.div
+                                                            key={i}
+                                                            animate={active ? { scale: [1, 1.6, 1], opacity: [1, 0.6, 1] } : {}}
+                                                            transition={{ duration: 0.6, repeat: active ? Infinity : 0 }}
+                                                            className="w-2.5 h-2.5 rounded-full"
+                                                            style={{
+                                                                background: done ? `hsl(${210 + (i / Math.min(uploadProgress.total, 24)) * 150}, 80%, 60%)` : '#e0e7ff',
+                                                                boxShadow: done ? '0 0 6px rgba(99,102,241,0.4)' : 'none'
+                                                            }}
+                                                        />
+                                                    );
+                                                })}
+                                                {uploadProgress.total > 24 && (
+                                                    <span className="text-[11px] text-indigo-300 font-bold self-center ml-1">+{uploadProgress.total - 24}</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                             </motion.div>
                         </div>
                     )}
@@ -1096,7 +1163,7 @@ const StudentManager = ({ cls, onBack, onStartGame }) => {
             </div>
 
 
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-6 w-full max-w-7xl px-4 pb-20">
+            <div ref={studentListRef} className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-6 w-full max-w-7xl px-4 pb-20">
                 {filteredStudents.map(student => (
                     <StudentCard
                         key={student.id}
@@ -1307,14 +1374,27 @@ const StudentManager = ({ cls, onBack, onStartGame }) => {
             {
                 editingTagsStudent && (
                     <TagEditor
+                        key={editingTagsStudent.id}
                         student={editingTagsStudent}
                         onClose={() => setEditingTagsStudent(null)}
-                        onSave={(tags, description) => {
-                            updateStudentTags(editingTagsStudent.id, tags);
-                            if (description !== undefined) {
-                                updateStudentDescription(editingTagsStudent.id, description);
+                        onSave={async (tags, description, closeAfterSave = true) => {
+                            try {
+                                const updatePromises = [
+                                    updateStudentTags(editingTagsStudent.id, tags)
+                                ];
+                                if (description !== undefined) {
+                                    updatePromises.push(updateStudentDescription(editingTagsStudent.id, description));
+                                }
+                                await Promise.all(updatePromises);
+                                if (closeAfterSave) {
+                                    setEditingTagsStudent(null);
+                                }
+                                return true;
+                            } catch (err) {
+                                console.error("Save failed:", err);
+                                alert("儲存失敗，請檢查網路連線");
+                                return false;
                             }
-                            setEditingTagsStudent(null);
                         }}
                     />
                 )
@@ -1395,7 +1475,38 @@ const TagEditor = ({ student, onClose, onSave }) => {
     const [tags, setTags] = useState(student.tags || []);
     const [description, setDescription] = useState(student.description || '');
     const [inputValue, setInputValue] = useState('');
+    const [lightboxOpen, setLightboxOpen] = useState(false);
+    const [zoom, setZoom] = useState(1);
+    const [pan, setPan] = useState({ x: 0, y: 0 });
+    const [dragging, setDragging] = useState(false);
+    const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+    const [showAiSuggestion, setShowAiSuggestion] = useState(false);
+    const [pendingAiData, setPendingAiData] = useState(null);
+    const [undoSnapshot, setUndoSnapshot] = useState(null);
+    const [isSaving, setIsSaving] = useState(false);
+    const [lastSaved, setLastSaved] = useState(null);
+    const wheelTargetRef = useRef(null);
     const { generateDescription, loading: aiLoading, error: aiError, description: aiDescription, tags: aiTags } = useGeminiVision();
+
+    const handleOpenLightbox = () => { setLightboxOpen(true); setZoom(1); setPan({ x: 0, y: 0 }); };
+    const handleCloseLightbox = () => setLightboxOpen(false);
+    const handleMouseDown = (e) => { setDragging(true); setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y }); };
+    const handleMouseMove = (e) => { if (!dragging) return; setPan({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y }); };
+    const handleMouseUp = () => setDragging(false);
+    const handleTouchStart = (e) => { const t = e.touches[0]; setDragging(true); setDragStart({ x: t.clientX - pan.x, y: t.clientY - pan.y }); };
+    const handleTouchMove = (e) => { if (!dragging) return; const t = e.touches[0]; setPan({ x: t.clientX - dragStart.x, y: t.clientY - dragStart.y }); };
+
+    // 用原生 addEventListener 綁定 wheel 事件（passive: false），避免 React passive listener 阻擋 preventDefault
+    useEffect(() => {
+        const el = wheelTargetRef.current;
+        if (!el || !lightboxOpen) return;
+        const onWheel = (e) => {
+            e.preventDefault();
+            setZoom(prev => Math.min(Math.max(prev - e.deltaY * 0.002, 0.5), 6));
+        };
+        el.addEventListener('wheel', onWheel, { passive: false });
+        return () => el.removeEventListener('wheel', onWheel);
+    }, [lightboxOpen]);
 
     const handleAiGenerate = async () => {
         if (student.photoUrl) {
@@ -1404,21 +1515,71 @@ const TagEditor = ({ student, onClose, onSave }) => {
     };
 
     useEffect(() => {
-        if (aiDescription) {
-            setDescription(prev => {
-                // Leaf check to avoid duplicate appending if effect runs twice
-                if (prev && prev.includes(aiDescription)) return prev;
-                return prev ? prev + '\n' + aiDescription : aiDescription;
-            });
-        }
-        if (aiTags && aiTags.length > 0) {
-            setTags(prevTags => {
-                const newTags = aiTags.filter(t => !prevTags.includes(t));
-                if (newTags.length === 0) return prevTags;
-                return [...prevTags, ...newTags];
-            });
+        if (aiDescription || (aiTags && aiTags.length > 0)) {
+            setPendingAiData({ description: aiDescription, tags: aiTags });
+            setShowAiSuggestion(true);
         }
     }, [aiDescription, aiTags]);
+
+    const applyAiSuggestion = (overwrite = false) => {
+        if (!pendingAiData) return;
+
+        // 保存當前狀態進快照以供撤銷
+        setUndoSnapshot({ tags: [...tags], description });
+
+        let nextTags = [...tags];
+        let nextDescription = description;
+
+        if (overwrite) {
+            // 直接替換為 AI 內容
+            nextDescription = pendingAiData.description || '';
+            nextTags = pendingAiData.tags || [];
+        } else {
+            // 合併描述
+            if (pendingAiData.description) {
+                if (!nextDescription || !nextDescription.includes(pendingAiData.description)) {
+                    nextDescription = nextDescription ? `${nextDescription}\n${pendingAiData.description}` : pendingAiData.description;
+                }
+            }
+
+            // 合併標籤
+            if (pendingAiData.tags && pendingAiData.tags.length > 0) {
+                const newTags = pendingAiData.tags.filter(t => !nextTags.includes(t));
+                nextTags = [...nextTags, ...newTags];
+            }
+        }
+
+        // 更新本地 State
+        setTags(nextTags);
+        setDescription(nextDescription);
+        setShowAiSuggestion(false);
+        setPendingAiData(null);
+
+        // 自動儲存：直接同步至 Firestore
+        handleInternalSave(nextTags, nextDescription, false);
+    };
+
+    const handleInternalSave = async (t = tags, d = description, close = true) => {
+        setIsSaving(true);
+        const success = await onSave(t, d, close);
+        setIsSaving(false);
+        if (success) {
+            setLastSaved(new Date());
+        }
+    };
+
+    const handleUndo = () => {
+        if (undoSnapshot) {
+            setTags(undoSnapshot.tags);
+            setDescription(undoSnapshot.description);
+            setUndoSnapshot(null);
+        }
+    };
+
+    const dismissAiSuggestion = () => {
+        setShowAiSuggestion(false);
+        setPendingAiData(null);
+    };
 
     const addTag = () => {
         if (inputValue.trim() && !tags.includes(inputValue.trim())) {
@@ -1444,36 +1605,130 @@ const TagEditor = ({ student, onClose, onSave }) => {
                     <XCircle className="w-8 h-8" />
                 </button>
 
-                {/* Left: Photo Zoom Area */}
-                <div className="w-full md:w-[45%] lg:w-[40%] bg-indigo-50 relative flex items-center justify-center overflow-hidden group min-h-[30vh] md:min-h{full">
-                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-purple-500/5 z-0" />
+                {/* Left: Photo Area */}
+                <div className="w-full md:w-[45%] lg:w-[40%] bg-slate-900 relative flex items-center justify-center overflow-hidden group min-h-[30vh] md:min-h-full">
+                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/30 to-purple-900/20 z-0" />
 
                     {student.photoUrl ? (
                         <img
                             src={student.photoUrl}
-                            className="w-full h-full object-cover transition-transform duration-700 hover:scale-110 cursor-zoom-in"
+                            className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-[1.03] cursor-zoom-in relative z-10"
                             alt={student.name}
-                            onClick={() => window.open(student.photoUrl, '_blank')}
-                            title="點擊在新分頁開啟原圖"
+                            onClick={handleOpenLightbox}
+                            title="點擊放大檢視原圖"
                         />
                     ) : (
                         <div className="flex flex-col items-center justify-center text-indigo-200">
-                            <div className="w-32 h-32 mb-4 bg-white/50 rounded-full flex items-center justify-center backdrop-blur-sm">
+                            <div className="w-32 h-32 mb-4 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-sm">
                                 <User className="w-16 h-16 opacity-50" />
                             </div>
                             <p className="font-bold text-lg opacity-60">無照片</p>
                         </div>
                     )}
 
+                    {/* 放大提示按鈕 */}
+                    {student.photoUrl && (
+                        <button
+                            onClick={handleOpenLightbox}
+                            className="absolute top-3 left-3 z-20 bg-black/40 hover:bg-black/70 text-white p-2 rounded-full transition-all opacity-0 group-hover:opacity-100 backdrop-blur-sm"
+                            title="全螢幕檢視"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                            </svg>
+                        </button>
+                    )}
+
+                    {/* 既有特徵疊加層 (繽紛明顯版 Pro Max) - 移到下方避免擋住臉 */}
+                    {(description || (tags && tags.length > 0)) && (
+                        <div className="absolute bottom-4 left-4 right-4 z-40 pointer-events-none md:bottom-8 md:left-8 md:right-8">
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                className="relative group/overlay max-w-3xl mx-auto"
+                            >
+                                {/* 虹彩漸層邊框外發光層 */}
+                                <div className="absolute -inset-0.5 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 rounded-3xl blur opacity-30 group-hover:opacity-50 transition duration-1000 animate-tilt"></div>
+
+                                <div className="relative bg-black/40 backdrop-blur-xl rounded-[24px] p-5 border border-white/20 shadow-2xl overflow-hidden">
+                                    {/* 背景裝飾光暈 */}
+                                    <div className="absolute -top-10 -right-10 w-32 h-32 bg-indigo-500/20 rounded-full blur-3xl" />
+
+                                    <div className="flex items-center justify-between mb-3 relative z-10">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-2 h-5 bg-gradient-to-b from-pink-400 to-indigo-600 rounded-full" />
+                                            <span className="text-[11px] font-black text-white uppercase tracking-[0.2em] drop-shadow-md">
+                                                {isSaving ? '同步雲端中...' : (lastSaved ? '已同步至雲端' : '已存記憶特徵')}
+                                            </span>
+                                        </div>
+                                        {isSaving ? (
+                                            <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                        ) : (
+                                            <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+                                        )}
+                                    </div>
+                                    {lastSaved && !isSaving && (
+                                        <div className="absolute top-2 right-10 text-[9px] text-emerald-400 font-bold opacity-80">
+                                            最後同步: {lastSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                        </div>
+                                    )}
+
+                                    {description && (
+                                        <p className="text-white text-sm font-bold leading-relaxed mb-4 line-clamp-4 drop-shadow-sm brightness-110">
+                                            {description}
+                                        </p>
+                                    )}
+
+                                    {tags && tags.length > 0 && (
+                                        <div className="flex flex-wrap gap-1.5 relative z-10">
+                                            {tags.map((t, idx) => {
+                                                const colors = [
+                                                    'bg-pink-500/80 text-white border-pink-400/50',
+                                                    'bg-indigo-500/80 text-white border-indigo-400/50',
+                                                    'bg-emerald-500/80 text-white border-emerald-400/50',
+                                                    'bg-amber-500/80 text-white border-amber-400/50',
+                                                    'bg-violet-500/80 text-white border-violet-400/50'
+                                                ];
+                                                return (
+                                                    <span
+                                                        key={t}
+                                                        className={`px-3 py-1 rounded-lg text-[10px] font-black border-2 backdrop-blur-md shadow-sm transform hover:scale-105 transition-transform ${colors[idx % colors.length]}`}
+                                                    >
+                                                        #{t}
+                                                    </span>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                            </motion.div>
+                        </div>
+                    )}
+
                     {/* Overlay Info for Photo (Mobile Only) */}
-                    <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/60 to-transparent text-white pt-20 md:hidden pointer-events-none">
+                    <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/70 to-transparent text-white pt-20 md:hidden pointer-events-none z-20">
                         <h2 className="text-3xl font-black">{student.name}</h2>
                         {student.seatNumber && <p className="font-bold opacity-80">#{student.seatNumber}</p>}
                     </div>
 
-                    {/* AI Generate Button (Over Photo) */}
-                    {student.photoUrl && (
-                        <div className="absolute bottom-6 right-6 md:bottom-8 md:right-8 z-20">
+                    {/* AI Generate Button & Undo Button */}
+                    <div className="absolute top-4 right-4 md:top-6 md:right-6 z-30 flex flex-col items-end gap-3">
+                        <AnimatePresence>
+                            {undoSnapshot && (
+                                <motion.button
+                                    initial={{ opacity: 0, x: 20, scale: 0.8 }}
+                                    animate={{ opacity: 1, x: 0, scale: 1 }}
+                                    exit={{ opacity: 0, x: 10, scale: 0.8 }}
+                                    onClick={(e) => { e.stopPropagation(); handleUndo(); }}
+                                    className="btn-glass-pill !bg-rose-500/90 !text-white shadow-lg border-2 border-rose-400/50 hover:bg-rose-600 transition-all flex items-center gap-2 group py-2 px-4"
+                                >
+                                    <RotateCcw className="w-4 h-4 group-hover:-rotate-180 transition-transform duration-500" />
+                                    <span className="font-bold text-xs uppercase tracking-wider">撤銷 AI 套用</span>
+                                </motion.button>
+                            )}
+                        </AnimatePresence>
+
+                        {student.photoUrl && (
                             <button
                                 onClick={(e) => { e.stopPropagation(); handleAiGenerate(); }}
                                 disabled={aiLoading}
@@ -1487,9 +1742,127 @@ const TagEditor = ({ student, onClose, onSave }) => {
                                 )}
                                 <span className="font-bold">{aiLoading ? 'AI 觀察中...' : 'AI 記憶特徵'}</span>
                             </button>
-                        </div>
-                    )}
+                        )}
+                    </div>
+
+                    {/* AI 建議疊加層 (直接在照片上作呈現) */}
+                    <AnimatePresence>
+                        {showAiSuggestion && pendingAiData && (
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                                className="absolute inset-x-4 bottom-20 md:bottom-24 z-30 p-5 bg-white/80 backdrop-blur-2xl rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-white/50"
+                            >
+                                <div className="flex justify-between items-start mb-3">
+                                    <div className="flex items-center gap-2">
+                                        <div className="bg-amber-100 p-2 rounded-xl">
+                                            <Sparkles className="w-5 h-5 text-amber-500 fill-amber-500" />
+                                        </div>
+                                        <div>
+                                            <span className="block font-black text-indigo-950 text-sm">AI 魔法觀察建議</span>
+                                            <span className="text-[10px] text-indigo-400 font-bold uppercase tracking-wider">AI Insight Results</span>
+                                        </div>
+                                    </div>
+                                    <button onClick={dismissAiSuggestion} className="bg-slate-100 hover:bg-rose-100 text-slate-400 hover:text-rose-500 p-1 rounded-full transition-colors">
+                                        <XCircle className="w-6 h-6" />
+                                    </button>
+                                </div>
+
+                                <div className="space-y-3 mb-4 max-h-[150px] overflow-y-auto custom-scrollbar pr-2">
+                                    {pendingAiData.description && (
+                                        <div className="text-sm text-indigo-900 bg-indigo-50/50 p-3 rounded-xl border border-indigo-100/30 leading-relaxed font-medium">
+                                            {pendingAiData.description}
+                                        </div>
+                                    )}
+                                    {pendingAiData.tags && pendingAiData.tags.length > 0 && (
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {pendingAiData.tags.map(t => (
+                                                <span key={t} className="px-3 py-1 bg-amber-100/50 text-amber-700 rounded-lg text-[11px] font-black border border-amber-200/50">
+                                                    #{t}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="flex gap-3 mt-1">
+                                    <button
+                                        onClick={() => applyAiSuggestion(false)}
+                                        className="flex-1 py-3 text-indigo-600 font-bold rounded-2xl border-2 border-indigo-50 bg-white hover:bg-indigo-50 transition-all active:scale-[0.98] text-xs shadow-sm"
+                                        title="將 AI 觀察結果加到現有內容後方"
+                                    >
+                                        保留並合併
+                                    </button>
+                                    <button
+                                        onClick={() => applyAiSuggestion(true)}
+                                        className="flex-[1.5] py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-black rounded-2xl shadow-xl shadow-indigo-200 transition-all active:scale-[0.98] flex items-center justify-center gap-2 text-sm"
+                                        title="清除現有內容，改用 AI 觀察結果"
+                                    >
+                                        <Zap className="w-4 h-4 fill-white" />
+                                        直接替換更新
+                                    </button>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </div>
+
+                {/* Lightbox */}
+                {lightboxOpen && student.photoUrl && (
+                    <div
+                        className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center"
+                        onClick={handleCloseLightbox}
+                    >
+                        {/* 操作說明 */}
+                        <div className="absolute top-4 left-1/2 -translate-x-1/2 text-white/50 text-xs font-bold tracking-widest select-none">
+                            滾輪縮放·拖曳平移·點擊空白關閉
+                        </div>
+                        {/* 关閉按鈕 */}
+                        <button
+                            onClick={handleCloseLightbox}
+                            className="absolute top-4 right-4 z-10 text-white/60 hover:text-white bg-white/10 hover:bg-white/20 p-2 rounded-full transition-all"
+                        >
+                            <XCircle className="w-8 h-8" />
+                        </button>
+                        {/* 縮放重置按鈕 */}
+                        <button
+                            onClick={(e) => { e.stopPropagation(); setZoom(1); setPan({ x: 0, y: 0 }); }}
+                            className="absolute bottom-6 left-1/2 -translate-x-1/2 text-white/60 hover:text-white bg-white/10 hover:bg-white/20 px-4 py-2 rounded-full text-sm font-bold transition-all"
+                        >
+                            重置 ({Math.round(zoom * 100)}%)
+                        </button>
+                        {/* 圖片區域 */}
+                        <div
+                            ref={wheelTargetRef}
+                            className="w-full h-full flex items-center justify-center overflow-hidden"
+                            onClick={(e) => e.stopPropagation()}
+                            onMouseDown={handleMouseDown}
+                            onMouseMove={handleMouseMove}
+                            onMouseUp={handleMouseUp}
+                            onMouseLeave={handleMouseUp}
+                            onTouchStart={handleTouchStart}
+                            onTouchMove={handleTouchMove}
+                            onTouchEnd={handleMouseUp}
+                            style={{ cursor: dragging ? 'grabbing' : 'grab' }}
+                        >
+                            <img
+                                src={student.photoUrl}
+                                alt={student.name}
+                                draggable={false}
+                                style={{
+                                    transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+                                    transition: dragging ? 'none' : 'transform 0.15s ease',
+                                    maxWidth: '90vw',
+                                    maxHeight: '90vh',
+                                    objectFit: 'contain',
+                                    userSelect: 'none',
+                                    pointerEvents: 'none'
+                                }}
+                            />
+                        </div>
+                    </div>
+                )}
 
                 {/* Right: Details & Tags */}
                 <div className="w-full md:w-[55%] lg:w-[60%] flex flex-col bg-white/60 backdrop-blur-xl h-full overflow-hidden">
@@ -1510,17 +1883,22 @@ const TagEditor = ({ student, onClose, onSave }) => {
                     {/* Scrollable Content Body */}
                     <div className="flex-1 overflow-y-auto px-6 md:px-10 py-2 custom-scrollbar">
                         {/* AI Description Editor / Result */}
-                        <div className="mb-6 flex-shrink-0">
+                        <div className="mb-6 flex-shrink-0 relative">
                             <h3 className="flex items-center gap-2 text-indigo-800 font-bold text-sm uppercase tracking-wide mb-2">
                                 <Sparkles className="w-4 h-4 text-amber-400" />
                                 AI 記憶口訣
                             </h3>
+
                             <textarea
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
-                                placeholder="點擊左圖「AI 記憶特徵」按鈕，或在此手動輸入特徵..."
-                                className="w-full h-32 md:h-40 p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100 text-indigo-900 font-medium leading-relaxed resize-none focus:bg-white focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 outline-none transition-all placeholder-indigo-300 scrollbar-thin scrollbar-thumb-indigo-200"
+                                placeholder={aiLoading ? "AI 正在掃描照片特徵中..." : "點擊左圖「AI 記憶特徵」按鈕，或在此手動輸入特徵..."}
+                                className={`w-full h-32 md:h-40 p-4 rounded-2xl border text-indigo-900 font-medium leading-relaxed resize-none outline-none transition-all placeholder-indigo-300 scrollbar-thin
+                  ${aiLoading ? 'bg-indigo-50/80 animate-pulse border-indigo-200' : 'bg-indigo-50/50 border-indigo-100 focus:bg-white focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300'}`}
                             />
+
+
+
                             <AnimatePresence>
                                 {aiError && (
                                     <motion.div
@@ -1574,8 +1952,10 @@ const TagEditor = ({ student, onClose, onSave }) => {
 
                     {/* Footer Buttons (Fixed) */}
                     <div className="p-6 md:p-10 md:pt-4 flex gap-4 flex-shrink-0 bg-gradient-to-t from-white/40 via-white/40 to-transparent">
-                        <button onClick={onClose} className="btn-clay btn-clay-rose flex-1 py-4 text-lg shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all">取消</button>
-                        <button onClick={() => onSave(tags, description)} className="btn-clay btn-clay-primary flex-[2] py-4 text-lg shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all">儲存變更</button>
+                        <button onClick={onClose} className="btn-clay btn-clay-rose flex-1 py-4 text-lg shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all">關閉</button>
+                        <button onClick={() => handleInternalSave(tags, description, true)} disabled={isSaving} className="btn-clay btn-clay-primary flex-[2] py-4 text-lg shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all">
+                            {isSaving ? '儲存中...' : '儲存並關閉'}
+                        </button>
                     </div>
                 </div>
 

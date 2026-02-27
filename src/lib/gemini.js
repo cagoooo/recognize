@@ -6,11 +6,49 @@ const genAI = new GoogleGenerativeAI(API_KEY);
 const CACHE_KEY_PREFIX = 'gemini_memory_anchor_';
 
 /**
+ * 將圖片縮放至指定寬度以節省 Token
+ * @param {Blob} blob 圖片 Blob
+ * @param {number} maxWidth 最大寬度
+ * @returns {Promise<{data: string, mimeType: string}>}
+ */
+const resizeImageForAi = async (blob, maxWidth = 512) => {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.src = URL.createObjectURL(blob);
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            let width = img.width;
+            let height = img.height;
+
+            if (width > maxWidth) {
+                height = (maxWidth / width) * height;
+                width = maxWidth;
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+
+            const dataUrl = canvas.toDataURL(blob.type, 0.7);
+            URL.revokeObjectURL(img.src);
+            resolve({
+                data: dataUrl.split(',')[1],
+                mimeType: blob.type
+            });
+        };
+    });
+};
+
+/**
  * 根據學生照片 URL 生成記憶錨點
  * @param {string} photoUrl 學生照片的 URL
+ * @param {string} existingHint 已有的口訣 (可選，若有則跳過 AI)
  * @returns {Promise<string>} AI 生成的記憶提示
  */
-export const generateMemoryAnchor = async (photoUrl) => {
+export const generateMemoryAnchor = async (photoUrl, existingHint = null) => {
+    if (existingHint) return existingHint;
+
     if (!API_KEY) {
         console.warn("Gemini API Key 尚未設定，將跳過 AI 記憶輔助功能。");
         return null;
@@ -25,17 +63,12 @@ export const generateMemoryAnchor = async (photoUrl) => {
     }
 
     try {
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
-        // 取得圖片資料
+        // 取得圖片資料並縮放
         const response = await fetch(photoUrl);
         const blob = await response.blob();
-
-        const imageData = await new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result.split(',')[1]);
-            reader.readAsDataURL(blob);
-        });
+        const { data: imageData, mimeType } = await resizeImageForAi(blob);
 
         const prompt = `
       角色設定：你是一位資深的特教觀察專家，擅長用「正向、具體、好記」的特徵來幫助老師記住學生。
@@ -57,7 +90,7 @@ export const generateMemoryAnchor = async (photoUrl) => {
             {
                 inlineData: {
                     data: imageData,
-                    mimeType: blob.type
+                    mimeType: mimeType
                 }
             }
         ]);

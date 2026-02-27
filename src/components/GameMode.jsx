@@ -13,13 +13,16 @@ import {
     Volume2,
     VolumeX
 } from 'lucide-react';
+import { useStudents, updateStudentAiHint } from '../hooks/useStore';
 import { useRecognitionStats } from '../hooks/useRecognitionStats';
 import { generateMemoryAnchor } from '../lib/gemini';
 import { useVoiceCoach } from '../hooks/useVoiceCoach';
 import SocialShareCard from './SocialShareCard';
 import { Share2 } from 'lucide-react';
 
-const GameMode = ({ students, className, onBack }) => {
+const GameMode = ({ targetStudents, allStudents, className, onBack }) => {
+    const [studentsQueue, setStudentsQueue] = useState([...targetStudents].sort(() => 0.5 - Math.random()));
+    const [solvedCount, setSolvedCount] = useState(0);
     const [currentQuestion, setCurrentQuestion] = useState(null);
     const [options, setOptions] = useState([]);
     const [score, setScore] = useState(0);
@@ -29,6 +32,8 @@ const GameMode = ({ students, className, onBack }) => {
     const [gameFinished, setGameFinished] = useState(false);
     const [aiHint, setAiHint] = useState(null);
     const [isAiLoading, setIsAiLoading] = useState(false);
+    const [aiProgress, setAiProgress] = useState(0);   // 0-100
+    const [aiStage, setAiStage] = useState(0);         // 0,1,2
     const [combo, setCombo] = useState(0);
     const [maxCombo, setMaxCombo] = useState(0);
 
@@ -39,16 +44,31 @@ const GameMode = ({ students, className, onBack }) => {
 
     useEffect(() => {
         generateQuestion();
+        // Prefetch first few patterns
+        preloadNextImages(3);
     }, []);
 
-    const generateQuestion = () => {
-        if (totalQuestions >= 10) {
+    const preloadNextImages = (count = 2) => {
+        const remaining = allStudents.sort(() => 0.5 - Math.random()).slice(0, count);
+        remaining.forEach(s => {
+            if (s.photoUrl) {
+                const img = new Image();
+                img.src = s.photoUrl;
+            }
+        });
+    };
+
+    const generateQuestion = (currentQueue = studentsQueue) => {
+        if (currentQueue.length === 0) {
             finishGame();
             return;
         }
 
-        const correct = students[Math.floor(Math.random() * students.length)];
-        let others = students.filter(s => s.id !== correct.id);
+        // 從佇列最前面取出一位，但要從最新的 targetStudents / allStudents 中撈取最新資料，確保吃到最新的 aiHint
+        const queueHead = currentQueue[0];
+        const correct = allStudents.find(s => s.id === queueHead.id) || queueHead;
+
+        let others = allStudents.filter(s => s.id !== correct.id);
         others = others.sort(() => 0.5 - Math.random()).slice(0, 3);
         const allOptions = [...others, correct].sort(() => 0.5 - Math.random());
 
@@ -58,16 +78,54 @@ const GameMode = ({ students, className, onBack }) => {
         setStartTime(Date.now());
 
         if (correct.photoUrl) {
-            setAiHint(null);
-            setIsAiLoading(true);
-            generateMemoryAnchor(correct.photoUrl).then(hint => {
-                setAiHint(hint);
+            // 先判定是否有現成 Hint，有的話直接顯示，不進入 Loading 狀態
+            const existingHint = correct.aiHint || (correct.description && correct.description.length < 30 ? correct.description : null);
+
+            if (existingHint) {
+                setAiHint(existingHint);
                 setIsAiLoading(false);
+            } else {
+                setAiHint(null);
+                setIsAiLoading(true);
+                setAiProgress(0);
+                setAiStage(0);
+                // Animate progress bar across 3 stages while waiting for API
+                const stages = [30, 65, 90];
+                let stageIdx = 0;
+                const next = () => {
+                    if (stageIdx < stages.length) {
+                        setAiProgress(stages[stageIdx]);
+                        setAiStage(stageIdx);
+                        stageIdx++;
+                        setTimeout(next, 900 + stageIdx * 300);
+                    }
+                };
+                setTimeout(next, 200);
+            }
+
+            generateMemoryAnchor(correct.photoUrl, existingHint).then(hint => {
+                if (!existingHint) {
+                    setAiProgress(100);
+                    setAiStage(3);
+                    setTimeout(() => {
+                        setAiHint(hint);
+                        setIsAiLoading(false);
+                    }, 350);
+                }
+
+                // If it's a freshly generated hint, save it to Firestore to save tokens next time
+                if (hint && !existingHint && updateStudentAiHint) {
+                    updateStudentAiHint(correct.id, hint);
+                }
+
                 // Auto-play hint if enabled
                 if (autoPlay && hint) {
                     speak(hint);
                 }
             });
+
+            // Preload next potential images
+            preloadNextImages(2);
         }
     };
 
@@ -79,6 +137,8 @@ const GameMode = ({ students, className, onBack }) => {
         // Record detail
         setDetailedResults(prev => [...prev, { studentId: currentQuestion.id, isCorrect, timeTaken }]);
 
+        let nextQueue = [...studentsQueue];
+
         if (isCorrect) {
             const baseScore = Math.max(10, Math.floor(100 - timeTaken * 5));
             const comboBonus = combo * 10;
@@ -89,16 +149,27 @@ const GameMode = ({ students, className, onBack }) => {
                 return newCombo;
             });
             setFeedback('correct');
+            setSolvedCount(prev => prev + 1);
+
+            // 答對就移除
+            nextQueue.shift();
             // Auto-speak name on correct answer
             if (autoPlay) speak(`正確！這是 ${currentQuestion.name}`);
         } else {
             setCombo(0);
             setFeedback('wrong');
+
+            // 答錯排到隊伍最後面，或是保留在前面
+            const wrongStudent = nextQueue.shift();
+            nextQueue.push(wrongStudent);
+
             // Auto-speak on wrong answer? Maybe just the name
             if (autoPlay) speak(`可惜，這是 ${currentQuestion.name}`);
         }
+
+        setStudentsQueue(nextQueue);
         setTotalQuestions(prev => prev + 1);
-        setTimeout(() => { generateQuestion(); }, 1500);
+        setTimeout(() => { generateQuestion(nextQueue); }, 1500);
     };
 
     const { recordGameResult } = useRecognitionStats();
@@ -106,7 +177,7 @@ const GameMode = ({ students, className, onBack }) => {
     const finishGame = async () => {
         setGameFinished(true);
         try {
-            await recordGameResult(className, score, 10, detailedResults);
+            await recordGameResult(className, score, targetStudents.length, detailedResults);
         } catch (e) {
             // Error logged in hook
         }
@@ -148,7 +219,7 @@ const GameMode = ({ students, className, onBack }) => {
                     {showShareCard && (
                         <SocialShareCard
                             score={score}
-                            total={10}
+                            total={targetStudents.length}
                             className={className}
                             onClose={() => setShowShareCard(false)}
                         />
@@ -167,7 +238,7 @@ const GameMode = ({ students, className, onBack }) => {
                 <div className="flex items-center gap-3">
                     <div className="stats-pill">
                         <Timer className="w-5 h-5 text-indigo-400" />
-                        <span className="text-sm">問題 {totalQuestions + 1} <span className="text-slate-300">/ 10</span></span>
+                        <span className="text-sm">掌握度 {solvedCount} <span className="text-slate-300">/ {targetStudents.length}</span></span>
                     </div>
                     <div className="stats-pill !bg-indigo-600 !border-indigo-400 !text-white shadow-lg shadow-indigo-200/50">
                         <Trophy className="w-5 h-5 text-yellow-300 fill-yellow-300 drop-shadow-sm" />
@@ -242,32 +313,61 @@ const GameMode = ({ students, className, onBack }) => {
                     {/* AI 記憶悄悄話 */}
                     <div className="mt-4 flex justify-center px-4">
                         <AnimatePresence mode="wait">
-                            {(aiHint || isAiLoading) && (
+                            {isAiLoading && (
                                 <motion.div
+                                    key="ai-loading"
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: 0.95 }}
+                                    className="bg-white/50 backdrop-blur-xl border border-indigo-100 p-5 rounded-[28px] shadow-2xl w-full max-w-sm"
+                                >
+                                    {/* Header */}
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <div className="bg-indigo-600 rounded-full p-1.5">
+                                            <Sparkles className="w-3.5 h-3.5 text-white" />
+                                        </div>
+                                        <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Gemini 正在分析...</p>
+                                    </div>
+
+                                    {/* Stage Label */}
+                                    <p className="text-xs font-bold text-indigo-700 mb-2 leading-snug">
+                                        {aiStage === 0 && '🔍 掃描五官特徵...'}
+                                        {aiStage === 1 && '🧠 比對記憶資料庫...'}
+                                        {aiStage === 2 && '✍️ 生成記憶錨點...'}
+                                        {aiStage >= 3 && '✅ 分析完成！'}
+                                    </p>
+
+                                    {/* Progress Bar */}
+                                    <div className="w-full bg-indigo-100 rounded-full h-2.5 overflow-hidden">
+                                        <motion.div
+                                            className="h-full rounded-full bg-gradient-to-r from-indigo-400 via-purple-500 to-pink-400"
+                                            initial={{ width: '0%' }}
+                                            animate={{ width: `${aiProgress}%` }}
+                                            transition={{ duration: 0.6, ease: 'easeInOut' }}
+                                        />
+                                    </div>
+                                    <p className="text-right text-[10px] text-indigo-300 font-bold mt-1">{aiProgress}%</p>
+                                </motion.div>
+                            )}
+                            {!isAiLoading && aiHint && (
+                                <motion.div
+                                    key="ai-hint"
                                     initial={{ opacity: 0, y: 10 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     exit={{ opacity: 0, scale: 0.95 }}
                                     className="bg-white/40 backdrop-blur-xl border border-white/60 p-4 rounded-[30px] shadow-2xl max-w-sm flex items-start gap-3"
                                 >
                                     <div className="bg-indigo-600 rounded-full p-2 mt-0.5">
-                                        {isAiLoading ? (
-                                            <Loader2 className="w-4 h-4 text-white animate-spin" />
-                                        ) : (
-                                            <Sparkles className="w-4 h-4 text-white" />
-                                        )}
+                                        <Sparkles className="w-4 h-4 text-white" />
                                     </div>
                                     <div className="text-left flex-1">
                                         <div className="flex items-center justify-between mb-1">
                                             <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">AI 記憶悄悄話</p>
-                                            {!isAiLoading && aiHint && (
-                                                <button onClick={() => speak(aiHint)} className="ml-2 p-1.5 rounded-full bg-indigo-50 hover:bg-indigo-100 text-indigo-400 transition-colors">
-                                                    <Volume2 className="w-3 h-3" />
-                                                </button>
-                                            )}
+                                            <button onClick={() => speak(aiHint)} className="ml-2 p-1.5 rounded-full bg-indigo-50 hover:bg-indigo-100 text-indigo-400 transition-colors">
+                                                <Volume2 className="w-3 h-3" />
+                                            </button>
                                         </div>
-                                        <p className="text-sm font-bold text-indigo-950 leading-relaxed">
-                                            {isAiLoading ? 'Gemini 正在仔細觀察特徵中...' : aiHint}
-                                        </p>
+                                        <p className="text-sm font-bold text-indigo-950 leading-relaxed">{aiHint}</p>
                                     </div>
                                 </motion.div>
                             )}

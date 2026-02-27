@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import {
     LineChart,
     Line,
@@ -6,10 +6,6 @@ import {
     YAxis,
     CartesianGrid,
     Tooltip,
-    ResponsiveContainer,
-    BarChart,
-    Bar,
-    Cell
 } from 'recharts';
 import { motion } from 'framer-motion';
 import { Trophy, TrendingUp, AlertCircle, Sparkles, Share2 } from 'lucide-react';
@@ -17,6 +13,21 @@ import SocialShareCard from './SocialShareCard';
 
 const AnalyticsDashboard = ({ scores, students }) => {
     const [showShareCard, setShowShareCard] = useState(false);
+    const chartContainerRef = useRef(null);
+    const [chartWidth, setChartWidth] = useState(0);
+
+    useEffect(() => {
+        if (!chartContainerRef.current) return;
+        const observer = new ResizeObserver(entries => {
+            const w = entries[0]?.contentRect?.width;
+            if (w && w > 0) setChartWidth(Math.floor(w));
+        });
+        observer.observe(chartContainerRef.current);
+        // 初始量測
+        const w = chartContainerRef.current.getBoundingClientRect().width;
+        if (w > 0) setChartWidth(Math.floor(w));
+        return () => observer.disconnect();
+    }, []);
     // 1. 計算成長趨勢 (取最近 10 筆)
     const growthData = useMemo(() => {
         if (!scores || scores.length === 0) return [];
@@ -83,14 +94,19 @@ const AnalyticsDashboard = ({ scores, students }) => {
                     )}
                 </div>
 
-                <div className="h-[300px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={growthData}>
+                <div ref={chartContainerRef} style={{ width: '100%', minHeight: 160 }}>
+                    {chartWidth > 0 && (
+                        <LineChart
+                            width={chartWidth}
+                            height={Math.round(chartWidth / 3)}
+                            data={growthData}
+                            margin={{ top: 8, right: 8, left: -16, bottom: 0 }}
+                        >
                             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
                             <XAxis dataKey="name" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
                             <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} domain={[0, 'auto']} />
                             <Tooltip
-                                contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)' }}
+                                contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' }}
                                 cursor={{ stroke: '#6366f1', strokeWidth: 2 }}
                             />
                             <Line
@@ -101,9 +117,10 @@ const AnalyticsDashboard = ({ scores, students }) => {
                                 dot={{ r: 4, fill: '#6366f1', strokeWidth: 2, stroke: '#fff' }}
                                 activeDot={{ r: 8, fill: '#4f46e5' }}
                                 animationDuration={1500}
+                                isAnimationActive={false}
                             />
                         </LineChart>
-                    </ResponsiveContainer>
+                    )}
                 </div>
             </motion.div>
 

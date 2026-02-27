@@ -44,7 +44,7 @@ export const useGeminiVision = () => {
             });
 
             // 2. Prepare the model and prompt
-            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+            const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
             const prompt = `
                 請扮演一位資深的特教觀察專家。請觀察這張照片，並回傳一個 JSON 物件，包含以下兩個欄位：
                 1. "description": 用繁體中文描述這位學生的外觀特徵（例如：戴眼鏡、長髮、笑臉），作為老師記憶學生的口訣。請用條列式，重點描述 3 個最明顯的特徵，總字數 50 字以內，語氣生動活潑。
