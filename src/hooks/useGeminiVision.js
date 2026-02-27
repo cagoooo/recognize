@@ -10,6 +10,34 @@ export const useGeminiVision = () => {
     const [description, setDescription] = useState(null);
     const [tags, setTags] = useState([]);
 
+    /**
+     * 封裝重試邏輯，專門應對 503 (負載過高) 錯誤
+     */
+    const withRetry = async (fn, maxRetries = 3, initialDelay = 1000) => {
+        let lastError;
+        for (let i = 0; i < maxRetries; i++) {
+            try {
+                return await fn();
+            } catch (error) {
+                lastError = error;
+                const isServiceUnavailable =
+                    error.message?.includes("503") ||
+                    error.message?.includes("Service Unavailable") ||
+                    error.message?.includes("high demand") ||
+                    error.message?.includes("finish_reason: OTHER");
+
+                if (isServiceUnavailable && i < maxRetries - 1) {
+                    const delay = initialDelay * Math.pow(2, i);
+                    console.warn(`Gemini Vision 伺服器忙碌 (503)，將於 ${delay}ms 後進行第 ${i + 1} 次重試...`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    continue;
+                }
+                throw error;
+            }
+        }
+        throw lastError;
+    };
+
     const generateDescription = async (imageUrl) => {
         setLoading(true);
         setError(null);
@@ -60,8 +88,8 @@ export const useGeminiVision = () => {
                 },
             };
 
-            // 3. Generate content
-            const result = await model.generateContent([prompt, imagePart]);
+            // 3. Generate content with retry
+            const result = await withRetry(() => model.generateContent([prompt, imagePart]));
             const text = result.response.text();
 
             // 4. Parse JSON
@@ -87,6 +115,8 @@ export const useGeminiVision = () => {
             console.error("Gemini Vision Error:", err);
             if (err.message?.includes("API key not valid")) {
                 setError("API Key 無效或未設定，請檢查 .env 檔案");
+            } else if (err.message?.includes("503") || err.message?.includes("high demand")) {
+                setError("AI 伺服器目前負載過高，已自動重試但仍失敗，請稍候再試");
             } else {
                 setError("AI 分析失敗，請稍後再試");
             }

@@ -41,6 +41,34 @@ const resizeImageForAi = async (blob, maxWidth = 512) => {
 };
 
 /**
+ * 封裝重試邏輯，專門應對 503 (負載過高) 錯誤
+ */
+const withRetry = async (fn, maxRetries = 3, initialDelay = 1000) => {
+    let lastError;
+    for (let i = 0; i < maxRetries; i++) {
+        try {
+            return await fn();
+        } catch (error) {
+            lastError = error;
+            const isServiceUnavailable =
+                error.message?.includes("503") ||
+                error.message?.includes("Service Unavailable") ||
+                error.message?.includes("high demand") ||
+                error.message?.includes("finish_reason: OTHER");
+
+            if (isServiceUnavailable && i < maxRetries - 1) {
+                const delay = initialDelay * Math.pow(2, i);
+                console.warn(`Gemini 伺服器忙碌 (503)，將於 ${delay}ms 後進行第 ${i + 1} 次重試...`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+                continue;
+            }
+            throw error;
+        }
+    }
+    throw lastError;
+};
+
+/**
  * 根據學生照片 URL 生成記憶錨點
  * @param {string} photoUrl 學生照片的 URL
  * @param {string} existingHint 已有的口訣 (可選，若有則跳過 AI)
@@ -85,7 +113,7 @@ export const generateMemoryAnchor = async (photoUrl, existingHint = null) => {
       - 「綁著高馬尾，活力滿滿的運動員。」
     `;
 
-        const result = await model.generateContent([
+        const result = await withRetry(() => model.generateContent([
             prompt,
             {
                 inlineData: {
@@ -93,7 +121,7 @@ export const generateMemoryAnchor = async (photoUrl, existingHint = null) => {
                     mimeType: mimeType
                 }
             }
-        ]);
+        ]));
 
         const text = result.response.text().trim();
 
