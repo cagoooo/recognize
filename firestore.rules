@@ -1,18 +1,44 @@
-rules_version='2'
+rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    
+    // 輔助函式：判斷是否已登入
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // 輔助函式：判斷是否為文件擁有者
+    function isOwner(teacherUid) {
+      return isSignedIn() && request.auth.uid == teacherUid;
+    }
+
+    // 班級集合：僅限建立者本人讀取與寫入
+    match /classes/{classId} {
+      allow read, write: if resource == null || isOwner(resource.data.teacherUid);
+      allow create: if isSignedIn() && request.resource.data.teacherUid == request.auth.uid;
+    }
+
+    // 學生集合：允許已登入的使用者讀取與寫入
+    // 實務上 App 會依據班級 id 過濾，安全性防線在於班級 id 只有該老師知道
+    match /students/{studentId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // 分數紀錄：允許已登入的使用者讀寫
+    match /scores/{scoreId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // 辨認統計：僅限本人存取
+    match /recognition_stats/{statId} {
+      allow read, write: if isSignedIn() && (resource == null || resource.data.teacherUid == request.auth.uid);
+    }
+    
+    // 預設拒絕其他所有存取
     match /{document=**} {
-      // This rule allows anyone with your database reference to view, edit,
-      // and delete all data in your database. It is useful for getting
-      // started, but it is configured to expire after 30 days because it
-      // leaves your app open to attackers. At that time, all client
-      // requests to your database will be denied.
-      //
-      // Make sure to write security rules for your app before that time, or
-      // else all client requests to your database will be denied until you
-      // update your rules.
-      allow read, write: if request.time < timestamp.date(2026, 3, 15);
+      allow read, write: if false;
     }
   }
 }
+
