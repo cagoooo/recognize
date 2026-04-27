@@ -251,7 +251,7 @@ const App = () => {
                 </div>
             </header>
 
-            <main className="w-full max-w-5xl px-4 flex flex-col items-center relative z-10 pt-64 md:pt-80 pb-20">
+            <main className="w-full max-w-5xl px-4 flex flex-col items-center relative z-10 pt-28 md:pt-32 pb-20">
                 {/* Spacer for Fixed Header */}
                 <div className="w-full h-8 md:hidden" />
                 <AnimatePresence mode="wait">
@@ -281,7 +281,7 @@ const HeroSection = ({ onLogin }) => (
     <motion.div
         initial={{ y: 40, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="relative flex flex-col items-center justify-center min-h-[calc(100vh-14rem)] md:min-h-[calc(100vh-16rem)] pt-8 pb-12 md:pb-20 text-center max-w-4xl mx-auto overflow-hidden md:overflow-visible px-4"
+        className="relative flex flex-col items-center justify-center min-h-[calc(100vh-10rem)] md:min-h-[calc(100vh-12rem)] pb-12 md:pb-20 text-center max-w-4xl mx-auto overflow-hidden md:overflow-visible px-4"
     >
         {/* Aurora Background Blobs */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full pointer-events-none z-0">
@@ -330,7 +330,7 @@ const HeroSection = ({ onLogin }) => (
 );
 
 const Dashboard = ({ onNavigate }) => (
-    <div className="flex flex-col items-center justify-center gap-10 md:gap-14 w-full min-h-[calc(100vh-14rem)] md:min-h-[calc(100vh-16rem)] pt-8 pb-12 md:pb-20">
+    <div className="flex flex-col items-center justify-center gap-10 md:gap-14 w-full min-h-[calc(100vh-10rem)] md:min-h-[calc(100vh-12rem)] pb-12 md:pb-20">
         <motion.div
             whileHover={{ y: -12, scale: 1.01 }}
             onClick={() => onNavigate('play')}
