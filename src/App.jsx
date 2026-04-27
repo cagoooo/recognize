@@ -330,7 +330,7 @@ const HeroSection = ({ onLogin }) => (
 );
 
 const Dashboard = ({ onNavigate }) => (
-    <div className="flex flex-col items-center gap-14 w-full mt-32">
+    <div className="flex flex-col items-center justify-center gap-10 md:gap-14 w-full mt-24 md:mt-0 md:min-h-[calc(100vh-10rem)] pb-12 md:pb-16">
         <motion.div
             whileHover={{ y: -12, scale: 1.01 }}
             onClick={() => onNavigate('play')}
