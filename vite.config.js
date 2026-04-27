@@ -38,16 +38,25 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         runtimeCaching: [
           {
+            // Firebase Storage 強制走 CORS，避免 <img> 的 no-cors opaque response
+            // 污染快取後 fetch() 取不到（TypeError: Failed to fetch）
             urlPattern: /^https:\/\/firebasestorage\.googleapis\.com\/.*/i,
             handler: 'CacheFirst',
             options: {
               cacheName: 'firebase-storage-images',
+              fetchOptions: {
+                mode: 'cors',
+                credentials: 'omit',
+              },
+              matchOptions: {
+                ignoreVary: true,
+              },
               expiration: {
                 maxEntries: 500,
                 maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
               },
               cacheableResponse: {
-                statuses: [0, 200]
+                statuses: [200] // 不接受 opaque (status=0)，避免 mode 衝突
               }
             }
           },
