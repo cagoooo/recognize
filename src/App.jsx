@@ -46,6 +46,7 @@ import { useLongPress } from './hooks/useLongPress';
 import QuickPreview from './components/QuickPreview';
 import GameMode from './components/GameMode';
 import StatsView from './components/StatsView';
+import InsightBook from './components/InsightBook';
 
 const App = () => {
     const { user, loading, login, logout } = useAuth();
@@ -484,7 +485,7 @@ const ClassManager = ({ userId, onBack, onStartGame, onNavigate, mode = 'manage'
             );
         }
         return (
-            <StudentManager cls={selectedClass} onBack={() => setSelectedClass(null)} onStartGame={(target, all, gameMode) => onStartGame(selectedClass, target, all, gameMode)} uploadProps={{ isUploading, setIsUploading, uploadProgress, setUploadProgress }} />
+            <StudentManager cls={selectedClass} userId={userId} onBack={() => setSelectedClass(null)} onStartGame={(target, all, gameMode) => onStartGame(selectedClass, target, all, gameMode)} uploadProps={{ isUploading, setIsUploading, uploadProgress, setUploadProgress }} />
         );
     }
 
@@ -773,8 +774,9 @@ const QuickStart = ({ cls, onBack, onStartGame, onNavigate }) => {
     );
 };
 
-const StudentManager = ({ cls, onBack, onStartGame }) => {
+const StudentManager = ({ cls, userId, onBack, onStartGame }) => {
     const { students, addStudent, batchAddStudents, updateStudentPhoto, deleteStudent, updateStudentTags, updateStudentDescription, recropStudentPhoto } = useStudents(cls.id);
+    const [showInsightBook, setShowInsightBook] = useState(false);
     const [newName, setNewName] = useState('');
     const [newSeatNumber, setNewSeatNumber] = useState('');
     const [photoFile, setPhotoFile] = useState(null);
@@ -1054,6 +1056,18 @@ const StudentManager = ({ cls, onBack, onStartGame }) => {
                 >
                     <Users className="w-6 h-6 mr-2" />
                     分組助手
+                </motion.button>
+
+                <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setShowInsightBook(true)}
+                    disabled={students.length < 2}
+                    className={`btn-clay bg-gradient-to-br from-rose-500 to-pink-600 text-white px-8 py-5 text-xl flex items-center shadow-lg border-2 border-rose-400 ${students.length < 2 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    title="AI 找出最容易混淆的學生 pair 與區分點"
+                >
+                    <Sparkles className="w-6 h-6 mr-2" />
+                    攻略本
                 </motion.button>
             </div>
 
@@ -1689,6 +1703,17 @@ const StudentManager = ({ cls, onBack, onStartGame }) => {
                     />
                 )
             }
+
+            <AnimatePresence>
+                {showInsightBook && (
+                    <InsightBook
+                        classId={cls.id}
+                        teacherUid={userId}
+                        students={students}
+                        onClose={() => setShowInsightBook(false)}
+                    />
+                )}
+            </AnimatePresence>
         </motion.div >
     );
 };

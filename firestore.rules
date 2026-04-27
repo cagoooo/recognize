@@ -34,7 +34,17 @@ service cloud.firestore {
     match /recognition_stats/{statId} {
       allow read, write: if isSignedIn() && (resource == null || resource.data.teacherUid == request.auth.uid);
     }
-    
+
+    // 班級攻略本：僅限該班導師（與該班 teacherUid 一致者）讀寫
+    // 文件 id 設計為 classId（一班一份），文件內冗餘存 teacherUid 供 rules 校驗
+    match /class_insights/{classId} {
+      allow read, write: if isSignedIn() && (
+        resource == null
+          ? request.resource.data.teacherUid == request.auth.uid
+          : resource.data.teacherUid == request.auth.uid
+      );
+    }
+
     // 預設拒絕其他所有存取
     match /{document=**} {
       allow read, write: if false;
