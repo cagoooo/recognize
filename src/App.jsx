@@ -281,7 +281,7 @@ const HeroSection = ({ onLogin }) => (
     <motion.div
         initial={{ y: 40, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="relative flex flex-col items-center pt-20 md:pt-[10vh] pb-12 md:pb-20 text-center max-w-4xl mx-auto overflow-hidden md:overflow-visible px-4"
+        className="relative flex flex-col items-center justify-center min-h-[calc(100vh-14rem)] md:min-h-[calc(100vh-16rem)] pt-8 pb-12 md:pb-20 text-center max-w-4xl mx-auto overflow-hidden md:overflow-visible px-4"
     >
         {/* Aurora Background Blobs */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full pointer-events-none z-0">
@@ -290,7 +290,7 @@ const HeroSection = ({ onLogin }) => (
             <div className="blob-shape bg-cyan-500 w-56 h-56 md:w-80 md:h-80 -bottom-20 left-10 md:left-20 animate-blob animation-delay-4000 mix-blend-multiply opacity-40" />
         </div>
 
-        <div className="relative z-10 mb-12 md:mb-20 animate-bounce-slow mt-40 md:mt-[18vh]">
+        <div className="relative z-10 mb-12 md:mb-20 animate-bounce-slow">
             <div className="glass-hero-card w-40 h-40 md:w-56 md:h-56 flex items-center justify-center p-6 md:p-8 glow-primary transform hover:scale-105 transition-transform duration-500">
                 <Users className="w-full h-full text-indigo-600 drop-shadow-lg" />
                 <motion.div
@@ -330,7 +330,7 @@ const HeroSection = ({ onLogin }) => (
 );
 
 const Dashboard = ({ onNavigate }) => (
-    <div className="flex flex-col items-center gap-10 md:gap-14 w-full mt-32 md:mt-[22vh] pb-12 md:pb-20">
+    <div className="flex flex-col items-center justify-center gap-10 md:gap-14 w-full min-h-[calc(100vh-14rem)] md:min-h-[calc(100vh-16rem)] pt-8 pb-12 md:pb-20">
         <motion.div
             whileHover={{ y: -12, scale: 1.01 }}
             onClick={() => onNavigate('play')}
