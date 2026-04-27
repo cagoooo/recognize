@@ -1,75 +1,216 @@
-# 🚀 Recognize App 未來優化建議路徑圖 (v3.7.0 版)
+# 🚀 Recognize App 未來優化建議路線圖 (v3.7.2 後續)
 
-由於目前已成功實作 **ZIP 備份系統**、**多維度練習模式 (反向/混淆)**、**RWD 1x4 佈局優化**，系統已具備極高的商用成熟度。
-
-接下來，可以將「識生學坊」推進至**智慧輔助、客製化挑戰與教學協作**的更高層次。以下是深度開發建議與藍圖：
-
----
-
-## 🛠️ 第一階段：進階實用功能與多維體驗 (Advanced Utilities & UX)
-
-### 1. 多維度特訓模式 (Multi-dimensional Training) ✅ [已完成]
-- **現狀**：「看照片選名字」為主的單向測試。
-- **建議**：
-  - **反向挑戰**：「看名字找照片」模式，適合考試點名的情境。
-  - **極限混淆模式**：測驗中 AI 自動挑選長相、髮型相似度極高的學生作為干擾選項，提升辨識「雙胞胎臉」的精確度。
-- **預期效果**：全方位訓練老師的大腦記憶提取路徑。
-
-### 2. 班級資料雙向匯出與備份 (Data Export & Portability) ✅ [已完成]
-- **建議**：新增「匯出班級備份檔 (.zip)」的功能。包含該班所有學生的 JSON 資料夾與圖片，並支援將這些資料以離線包裹的方式匯入到新設備。
-- **目標**：提升對資料所有權的掌控，讓這項工具不僅依賴於雲端，也具備冷備份的能力，並防止任何資料丟失風險。
+> 截至 v3.7.2，已完成：IndexedDB 離線快取、SWR 同步、長按預覽、ZIP 班級備份、反向/混淆特訓、AI 記憶口訣、Firestore Rules 強化、CI/CD 全環境同步。
+> 接下來把「識生學坊」推進到 **智慧視覺輔助、教師協作、教育長期紀錄** 三個層次。
 
 ---
 
-## 🤖 第二階段：AI 視覺深化與客製化輔助 (AI Vision & Audio Empowerment)
+## 🥇 優先級總覽（建議實作順序）
 
-### 1. 自動人臉對齊與智慧裁切 (Smart Face Cropping)
-- **現狀**：使用者上傳的照片背景雜亂，或主體並非置中，導致卡片排版偶有不一。
-- **建議**：在上傳照片或預覽時，引入輕量級前端人臉檢測 (如 `face-api.js`)，自動聚焦於學生的頭部至肩膀，並動態生成統一尺寸的高畫質裁切圖片。
-- **目標**：使得整個應用的排版如同畢業紀念冊般完美一致，減少老師手動修圖的負擔。
-
-### 2. 班級辨識攻略本 (Class Insight Report)
-- **建議**：利用 Gemini 自動分析班級照片的整體分佈。
-  - *範例*：AI 發現「五甲有 5 位戴同樣黑框眼鏡的男生，其中王小明與李小華臉形最像，建議區分點在於王小明有梨渦」。
-- **目標**：主動提供「高風險混淆對象」的差異分析，幫助老師提前預判難點。
-
-### 3. Voice Annotations & AI TTS (語音記憶與朗讀)
-- **建議**：支援結合 `Web Speech API`。長按預覽浮現照片時，自動以柔和的語音唸出該學生的名字與「AI 記憶口訣」。
-- **目標**：調動視覺與聽覺雙重感官，不僅用眼睛背，也能聽著背。
+| 順位 | 主題 | 預期 ROI | 工程難度 | 風險點 |
+|---|---|---|---|---|
+| **P0** | 自動人臉對齊與智慧裁切 | ⭐⭐⭐⭐⭐ 視覺感受躍升 | 中（前端 face-api） | bundle size、效能 |
+| **P0** | 班級攻略本（高混淆對比表）| ⭐⭐⭐⭐⭐ 教學核心痛點 | 中（Gemini batch）| API quota / 成本 |
+| **P1** | 教師班級共享金鑰 | ⭐⭐⭐⭐ 口碑擴散引擎 | 中高（Rules 改寫）| 權限模型 |
+| **P1** | PWA 真離線封裝 | ⭐⭐⭐⭐ 偏鄉/外地教學 | 中（SW 快取策略）| 快取爆炸 / 更新流程 |
+| **P2** | TTS 語音記憶 | ⭐⭐⭐ 多感官輔助 | 低（Web Speech API）| 中文音色 |
+| **P2** | 學期成長軌跡 | ⭐⭐⭐ 情感連結 | 中（資料模型擴充）| 儲存量 |
+| **P3** | 觀察家挑戰（情緒辨識）| ⭐⭐ 創新賣點 | 高（AI 倫理）| 學生隱私 |
+| **P3** | 多老師戰績排行榜 | ⭐⭐ 社群動機 | 中 | 隱私 / 動機反效果 |
 
 ---
 
-## 📈 第三階段：教學成就與教師協作 (Productivity & Collaboration)
+## 🛠️ P0：立即可動工的兩支「殺手級」功能
 
-### 1. 教師共享與協同建置 (Cross-Teacher Knowledge Sharing)
-- **現狀**：每位老師（導師、科任老師）都需要重新建立班級與學生資料。
-- **建議**：實作「班級共享金鑰/網址 (Share Token)」。班導師建置好全班的名單、照片與記憶口訣後，產生一個一鍵連結。科任老師點擊連結即可直接將這批學生的快取同步進自己的帳號中（但測驗成績各自獨立計算）。
-- **目標**：透過教師社群互助，大幅減少重複建置基礎資料的時間。
+### 1. 🧠 自動人臉對齊與智慧裁切 (Smart Face Cropping)
+
+**痛點**：老師上傳的學生照片來源混雜（畢業照、家長傳的生活照、活動側拍），主體偏移、背景雜亂，導致卡片排版不一致，視覺上像「半成品」。
+
+**技術建議**：
+- 採用 **`face-api.js`** 或 **MediaPipe Face Detection (Web)**，前端純客戶端執行，不消耗 Gemini quota
+- 流程：上傳 → 偵測 bounding box → 自動以「頭頂留 15% padding、肩膀切齊」邏輯產生 1:1 方形裁切 → IndexedDB 同時保留原圖 + 裁切圖
+- **降級策略**：若 face detection 失敗（戴口罩、側臉），fallback 到中央方形裁切，避免阻塞流程
+- 加 **「重新裁切」手動按鈕**，避免自動偵測抓錯（例：抓到背景的另一個人）
+
+**實作步驟**：
+1. 先在 `lib/faceCrop.js` 寫純函式（input: File → output: Blob）
+2. 在 `StudentImport.jsx` 上傳流程接入，加 progress UI
+3. IndexedDB schema v3：新增 `croppedBlob` 欄位
+4. 加 feature flag，先讓自己班試跑一週
+
+**注意**：
+- face-api.js 的 model 約 5-10MB，要走 dynamic import + Service Worker 快取，不能塞進主 bundle
+- iPad / 老舊裝置可能會卡，需設 `navigator.hardwareConcurrency` 判斷是否啟用
 
 ---
 
-## 🚀 第三階段與未來願景：教育科技深度轉型 (EduTech Vision)
+### 2. 📊 班級攻略本 (Class Insight Report)
 
-### 1. 學員成長軌跡紀錄 (Educational Growth Timeline)
-- **建議**：記錄學生在不同學期的照片與特徵變化，形成「個人化成長集」。
-- **目標**：讓這款 App 不僅是辨識工具，更成為老師觀察學生成長、服裝風格甚至心境變化的教育紀錄簿，強化師生連結。
+**痛點**：老師最痛苦的不是「記不住」，而是「分不清那兩個」。需要被主動告知「五甲王小明 vs 李小華需要區分梨渦」。
 
-### 2. 情感共感特訓 (Empathy & Sentiment Awareness)
-- **建議**：利用 AI 偵測照片中的情緒標籤（如：開朗、文靜、憂鬱）。
-- **範例**：練習模式可演化為「觀察挑戰」——老師需從照片中感知學生的情緒狀態，而不只是記住名字。
-- **目標**：引導老師從「記住臉孔」進階到「理解心情」，協助建立更具溫度的校園環境。
+**技術建議**：
+- 在班級頁加「🎯 產生攻略本」按鈕，後端用 Gemini Batch 對該班所有學生兩兩比對
+- Prompt 設計：「以下是同班學生 A 與 B 的照片與特徵。請輸出 JSON：{ similarity: 0-1, distinguishingPoint: '王小明有梨渦，李小華較圓臉' }」
+- 只儲存 similarity > 0.7 的 pair，避免資料爆炸
+- 結果存 Firestore `class_insights/{classId}` 集合，加上 generatedAt timestamp，三個月後失效重新產生
 
-### 3. PWA 2.0：極致離線封裝 (The "Always-On" Mastery)
-- **建議**：完全脫離網路依賴，讓備份檔可以直接同步至手機桌面作為獨立沙盒運行。
-- **目標**：在登山露營、偏鄉小學等極端無網環境下，依然能展現秒開且流暢的教學輔助能力。
+**UI 呈現**：
+- 高混淆學生 pair 卡片化呈現，並排兩張照片 + 紅色 highlight 區分點
+- 進入特訓模式時，「極限混淆」自動優先抽取攻略本內的 pair
+- 攻略本內每組可加「我已掌握 ✓」狀態，完成度同步到首頁進度條
+
+**成本評估**：一個 30 人班 = C(30,2) = 435 次 Gemini call，用 `gemini-2.5-flash-lite` 約 NT$3-5/班，可接受
+
+---
+
+## 👥 P1：擴散引擎與離線韌性
+
+### 3. 🔑 教師班級共享金鑰 (Class Share Token)
+
+**現況**：科任老師每年要重複建檔 6-8 個班，是放棄使用的最大門檻。
+
+**設計建議**：
+- 班級新增 `shareToken: <隨機 22 字元>` 與 `sharedWith: [uid1, uid2]`
+- 班導師在班級設定頁產生「分享連結」`https://recognize.app/join?token=xxx`
+- 科任老師點擊 → Firestore Function 驗證 token → 將該老師 uid 加入 `sharedWith`
+- **權限模型**：`sharedWith` 內的老師可 **讀取** 學生資料與照片，但 **戰績獨立**（`scores` 文件加 `teacherUid` 區分）
+
+**Firestore Rules 改寫**（重點，改錯會炸）：
+```
+match /classes/{classId} {
+  allow read: if isSignedIn() && (
+    resource.data.teacherUid == request.auth.uid ||
+    request.auth.uid in resource.data.sharedWith
+  );
+  allow write: if isOwner(resource.data.teacherUid); // 只有班導能改
+}
+match /students/{studentId} {
+  allow read: if isSignedIn() && (
+    get(/databases/$(database)/documents/classes/$(resource.data.classId)).data.teacherUid == request.auth.uid ||
+    request.auth.uid in get(...).data.sharedWith
+  );
+}
+```
+
+**注意**：
+- `get()` 在 rules 內每次都算 1 次讀取，會放大費用 → 學生集合內也要冗餘存 `sharedWith`，犧牲一致性換取讀取效能
+- 撤銷機制：班導必須能 1 鍵把某老師從 `sharedWith` 踢掉
+- 寫測試：用 Firebase Emulator + `@firebase/rules-unit-testing` 跑 rules CI
+
+---
+
+### 4. 📡 PWA 真離線封裝 (Always-On Mode)
+
+**現況**：雖有 IndexedDB 快取，但首次載入仍依賴網路；Service Worker 策略尚未深度優化。
+
+**建議**：
+- 升級 Service Worker 為 **Workbox** 並用 `injectManifest` 模式
+- 策略分流：
+  - `*.js / *.css / *.html` → CacheFirst with NetworkFallback (含版本號)
+  - 學生照片 (Storage URL) → StaleWhileRevalidate，快取上限 500MB
+  - Firestore API → NetworkOnly，但前端要能處理離線狀態
+- 加 **離線徽章**：頂部出現「📡 離線模式 - 顯示本地快取資料」橫幅
+- 加 **「整班離線封裝」按鈕**：一鍵把該班學生 + 照片全 prefetch 到 SW cache，露營 / 校外教學前用
+
+**注意**：
+- iPadOS Safari 對 SW 快取有 50MB 軟限制，超過會被 evict → 需偵測並提醒老師
+- 版本更新流程要寫好 `skipWaiting()` + 「有新版可用」toast，否則會撞到 PWA 經典坑（使用者看舊版半年）
+- 參考你已有的 `pwa-cache-bust` skill
+
+---
+
+## 🎤 P2：感官擴充與時間維度
+
+### 5. 🔊 TTS 語音記憶（Voice Annotations）
+
+**建議**：
+- 長按預覽彈出時，自動以 `Web Speech API.speechSynthesis` 念出「王小明 - 戴黑框眼鏡，左臉有梨渦」
+- 加 **「靜音模式」開關**，並記住裝置 preference
+- 若是中文發音差（Chrome on Windows 中文音色不佳），可選用 **Google Cloud TTS** 的 `cmn-TW-Wavenet-A`，但要走 proxy（避免暴露 key）
+
+**進階**：
+- 老師可錄製「自己唸名字」的 30s 音檔覆蓋 TTS（學生最熟悉的還是老師自己的聲音）
+- 在 IndexedDB 存 audioBlob，與照片一起打包進 ZIP 備份
+
+---
+
+### 6. 📈 學期成長軌跡 (Growth Timeline)
+
+**建議**：
+- 學生資料模型新增 `photoHistory: [{ semester: '2026-上', photoUrl, uploadedAt }]`
+- 每學期老師上傳新照片時，舊照片自動歸檔而非覆蓋
+- 學生詳情頁新增 timeline 視圖，可滑動比對「一年級 → 六年級」的變化
+- 畢業時可一鍵產生「成長紀念冊 PDF」（呼應你的 `pdf-export-print-best-practice` skill，用 `window.print()` + `@media print`）
+
+**儲存成本**：每學生 6 張 × 200KB ≈ 1.2MB，30 人班 = 36MB，Firebase Storage 免費層內可承受
+
+---
+
+## 🧪 P3：實驗性 / 需審慎評估
+
+### 7. 😊 觀察家挑戰（情緒辨識）
+
+**直接建議**：**先不要做**。
+- 對國小學童做情緒分類，家長 / 學校行政可能會反彈（「為什麼 AI 在分析我小孩開不開心」）
+- 替代方案：改成「**特徵觀察挑戰**」——AI 標記照片中的客觀視覺特徵（戴眼鏡、馬尾、運動服），老師需從特徵反推學生，避開情緒爭議
+
+### 8. 🏆 多老師戰績排行榜
+
+**注意風險**：教師圈是熟人圈，公開排行可能造成壓力反效果。
+- 改成「**自己 vs 自己**」的歷史進步曲線
+- 或匿名化的「全國老師中位數對比」，只比百分位不顯名
+
+---
+
+## 🧰 跨切面技術債（背景任務）
+
+這些不是新功能，但累積到一定程度會拖慢迭代速度，建議排程處理：
+
+### A. 測試覆蓋率提升至 80%
+- 目前 ~63%，但「核心邏輯 100%」是個樂觀估計
+- 應補：`useRecognitionStats` 的 race condition、IndexedDB 升級流程、ZIP 匯入的損壞檔處理
+- 加 Playwright E2E：登入 → 建班 → 匯入 → 玩一輪測驗 → 驗證戰績寫入
+
+### B. Sentry 或類似錯誤監控
+- 目前線上錯誤完全靠老師回報
+- 用 Sentry 免費層（5K events/月足夠）抓住 production 的 silent failure
+- 特別注意 IndexedDB quota exceed、Firestore offline persistence 衝突
+
+### C. 效能 budget
+- 用 Lighthouse CI 在每次 PR 跑分，設 budget：FCP < 1.5s、TTI < 3s、bundle < 500KB
+- face-api.js 進來後一定會炸這條線，提前規劃 dynamic import
+
+### D. Firestore 索引與成本健檢
+- 跑一輪 `firebase firestore:indexes` 檢查是否有 N+1 查詢
+- 用 Firebase Usage Dashboard 看 reads/writes 趨勢，學生數成長後容易破免費層
+- 攻略本功能上線前，先估清楚 Gemini + Firestore 的月成本天花板
+
+### E. i18n 預備
+- 即使現在只有中文，把所有 UI 字串集中到 `i18n/zh-TW.json`
+- 未來想推給東南亞、日韓的繁中老師時不用重構
+
+### F. 無障礙 (a11y)
+- 跑一次 axe-core，補 alt text、aria-label、focus-visible
+- 學生詳情 Modal 要支援 ESC 關閉、focus trap
+- 戰績圖表（Recharts）要有 SR 替代文字
+
+---
+
+## 🎯 90 天落地建議（如果你只能挑三件事）
+
+1. **第 1-30 天**：P0-1 自動人臉裁切（純前端，無新成本）+ Sentry 接入
+2. **第 31-60 天**：P0-2 班級攻略本（含 Gemini batch + 攻略本驅動的特訓 pair 抽選）
+3. **第 61-90 天**：P1-3 教師班級共享金鑰（含 Rules unit testing）
+
+完成這三件，App 會從「個人記憶輔助工具」進化為「學校級教師協作平台」，值得發布 v4.0.0 大版號。
 
 ---
 
 > [!IMPORTANT]
-> **🚀 中短期最佳實踐順序：**
-> 1. 首先進行 **2-1 自動人臉對齊與智慧裁切**：一致的照片外觀會帶動 App 專業感的飛躍性提升。
-> 2. 接著實作 **3-1 教師共享金鑰**：這會是產品引發「辦公室口碑效應」最強大的催化劑。
+> **建議下個版本：v3.8.0** 命名為「視覺一致性升級」，主推 P0-1 + 攻略本 MVP。
+> v4.0.0 留給「教師協作」（共享金鑰 + 真離線 PWA）作為里程碑事件。
 
 ---
-*最後更新：2026-02-27*
-*維護人：石門國小阿凱老師與 Antigravity AI*
+
+*最後更新：2026-04-27*
+*維護人：石門國小阿凱老師 × Claude Opus 4.7*

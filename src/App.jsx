@@ -774,7 +774,7 @@ const QuickStart = ({ cls, onBack, onStartGame, onNavigate }) => {
 };
 
 const StudentManager = ({ cls, onBack, onStartGame }) => {
-    const { students, addStudent, batchAddStudents, updateStudentPhoto, deleteStudent, updateStudentTags, updateStudentDescription } = useStudents(cls.id);
+    const { students, addStudent, batchAddStudents, updateStudentPhoto, deleteStudent, updateStudentTags, updateStudentDescription, recropStudentPhoto } = useStudents(cls.id);
     const [newName, setNewName] = useState('');
     const [newSeatNumber, setNewSeatNumber] = useState('');
     const [photoFile, setPhotoFile] = useState(null);
@@ -1666,6 +1666,7 @@ const StudentManager = ({ cls, onBack, onStartGame }) => {
                         key={editingTagsStudent.id}
                         student={editingTagsStudent}
                         onClose={() => setEditingTagsStudent(null)}
+                        onRecrop={() => recropStudentPhoto(editingTagsStudent.id, editingTagsStudent.photoUrl)}
                         onSave={async (tags, description, closeAfterSave = true) => {
                             try {
                                 const updatePromises = [
@@ -1769,7 +1770,23 @@ const StudentCard = ({ student, onEdit, onDelete, onLongPress }) => {
 };
 
 // Student Details & Tag Editor Modal
-const TagEditor = ({ student, onClose, onSave }) => {
+const TagEditor = ({ student, onClose, onSave, onRecrop }) => {
+    const [recropping, setRecropping] = useState(false);
+    const [recropResult, setRecropResult] = useState(null); // { ok, method, reason }
+    const handleRecrop = async () => {
+        if (!onRecrop || recropping) return;
+        setRecropping(true);
+        setRecropResult(null);
+        try {
+            const { cropMeta } = await onRecrop();
+            setRecropResult({ ok: true, method: cropMeta?.method, reason: cropMeta?.reason });
+        } catch (err) {
+            console.error('Re-crop failed:', err);
+            setRecropResult({ ok: false, reason: err.message || '重新裁切失敗' });
+        } finally {
+            setRecropping(false);
+        }
+    };
     const [tags, setTags] = useState(student.tags || []);
     const [description, setDescription] = useState(student.description || '');
     const [inputValue, setInputValue] = useState('');
@@ -2041,7 +2058,41 @@ const TagEditor = ({ student, onClose, onSave }) => {
                                 <span className="font-bold">{aiLoading ? 'AI 觀察中...' : 'AI 記憶特徵'}</span>
                             </button>
                         )}
+
+                        {student.photoUrl && onRecrop && (
+                            <button
+                                onClick={(e) => { e.stopPropagation(); handleRecrop(); }}
+                                disabled={recropping}
+                                className={`btn-glass-pill !bg-white/90 !backdrop-blur-xl shadow-lg border-2 border-emerald-100 text-emerald-600 hover:scale-105 transition-all ${recropping ? 'opacity-80 cursor-wait' : ''}`}
+                                title="用 AI 自動把照片對齊到人臉"
+                            >
+                                {recropping ? (
+                                    <div className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                                ) : (
+                                    <span className="text-lg">✂️</span>
+                                )}
+                                <span className="font-bold">{recropping ? '裁切中...' : '重新裁切'}</span>
+                            </button>
+                        )}
                     </div>
+
+                    {/* 裁切狀態徽章 / 失敗提示 */}
+                    {(student.cropMeta?.method === 'center' || (recropResult && !recropResult.ok) || (recropResult?.ok && recropResult.method === 'center')) && (
+                        <div className="absolute bottom-4 left-4 right-4 md:left-6 md:right-6 z-30 pointer-events-none flex justify-center">
+                            <div className="bg-amber-500/90 backdrop-blur-md text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg border border-amber-300/50 flex items-center gap-2">
+                                <span>⚠️</span>
+                                <span>{recropResult?.ok === false ? recropResult.reason : '未偵測到人臉，使用中央裁切'}</span>
+                            </div>
+                        </div>
+                    )}
+                    {recropResult?.ok && recropResult.method === 'face' && (
+                        <div className="absolute bottom-4 left-4 right-4 md:left-6 md:right-6 z-30 pointer-events-none flex justify-center">
+                            <div className="bg-emerald-500/90 backdrop-blur-md text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg border border-emerald-300/50 flex items-center gap-2">
+                                <span>✓</span>
+                                <span>已重新對齊人臉</span>
+                            </div>
+                        </div>
+                    )}
 
                     {/* AI 建議疊加層 (直接在照片上作呈現) */}
                     <AnimatePresence>

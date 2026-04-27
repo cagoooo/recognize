@@ -1,13 +1,34 @@
 # 識生學坊 (Recognize) - 開發進度記錄
 
-> 最後更新：2026-02-27 14:20
+> 最後更新：2026-04-27
 
 ## 📋 當前版本
-**v3.7.1** - 資料持久化修復與自定義確認視窗
+**v3.8.0** - 自動人臉對齊與智慧裁切
 
 ---
 
 ## ✅ 完成功能總覽
+
+### 🧠 v3.8.0 (2026-04-27) - 自動人臉對齊與智慧裁切（P0 殺手級功能 Phase 1）
+| 功能 | 狀態 | 說明 |
+|------|------|------|
+| **MediaPipe Face Detection 整合** | ✅ | 引入 `@mediapipe/tasks-vision`，WebAssembly 端離線偵測，model 從 Google CDN 載入後快取 |
+| **智慧裁切演算法** | ✅ | 偵測 bounding box 後，以「頭頂 50% padding、肩膀延伸 140%、左右 35% padding」演算 1:1 方形裁切框 |
+| **多人臉智慧挑選** | ✅ | 同框多人時依「面積大小 - 偏離中央距離」加權挑選主體，避開背景路人 |
+| **失敗 fallback 機制** | ✅ | 偵測不到人臉時自動退回中央方形裁切，UI 黃色徽章提示老師「未偵測到人臉，使用中央裁切」 |
+| **IndexedDB v3 雙存策略** | ✅ | `blob` 存裁切版供顯示，`originalBlob` 保留原圖供日後重新裁切；附 `cropMeta` 記錄方法與時間 |
+| **重新裁切按鈕** | ✅ | 學生詳情 Modal 新增 ✂️ 按鈕，可即時重跑裁切並顯示綠/黃徽章回饋結果 |
+| **Bundle 優化** | ✅ | MediaPipe 自動 code-split 為獨立 125KB chunk，僅在首次裁切時延遲載入，不拖累首頁 LCP |
+| **既有資料相容** | ✅ | 對 v3.8 前學生，重新裁切時自動 fetch 既有 photoUrl 作為原圖來源，無資料遷移成本 |
+
+### 🔐 v3.7.2 (2026-04-14) - Firestore 安全性規則強化與部署管線同步
+| 功能 | 狀態 | 說明 |
+|------|------|------|
+| **Firestore Rules 過期修正** | ✅ | 重寫 `firestore.rules`：補上 `isSignedIn()` / `isOwner()` 輔助函式，避免 `request.time < timestamp.date(...)` 類過期條款導致全站 `permission-denied` |
+| **班級擁有權嚴格綁定** | ✅ | `classes/{classId}` 強制 `teacherUid == request.auth.uid`，杜絕跨帳號讀取他班資料 |
+| **預設拒絕安全網** | ✅ | 加入 `match /{document=**} { allow read, write: if false; }` 兜底，未列舉的 collection 一律拒絕 |
+| **workflow_dispatch 手動觸發** | ✅ | GitHub Actions 加入手動觸發入口，方便 Secrets 變更或 Rules 漂移時快速重新部署 |
+| **API Key 全環境同步** | ✅ | 將 `VITE_GEMINI_API_KEY` 等環境變數推送到 dev/prod 全部 build job，避免線上 AI 口訣失效 |
 
 ### 📦 v3.7.1 (2026-02-27) - 資料持久化修復與體驗細節優化
 | 功能 | 狀態 | 說明 |
@@ -129,5 +150,5 @@ graph TD
 
 ---
 
-*最後更新：2026-02-27 18:15*  
-*版本：v3.7.1*
+*最後更新：2026-04-27*  
+*版本：v3.8.0*

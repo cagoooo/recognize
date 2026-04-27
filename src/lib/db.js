@@ -1,5 +1,5 @@
 const DB_NAME = 'recognize_db';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 /**
  * 初始化 IndexedDB
@@ -136,13 +136,51 @@ export const getStudentsByClass = async (classId) => {
 };
 
 // --- Photos (Blob) ---
-export const savePhotoBlob = async (studentId, blob) => {
-    return performAction('photos', 'readwrite', store => store.put({ studentId, blob, timestamp: Date.now() }));
+/**
+ * v3 schema: { studentId, blob (顯示用，預設為裁切後), originalBlob (原圖備份), cropMeta, timestamp }
+ *  - 舊資料 (v2) 沒有 originalBlob / cropMeta，讀取時會是 undefined
+ *  - 為相容 backup.js 等只傳一個 blob 的呼叫端，第二參數可以是 Blob 或物件
+ */
+export const savePhotoBlob = async (studentId, blob, extras = {}) => {
+    const { originalBlob, cropMeta } = extras;
+    const record = {
+        studentId,
+        blob,
+        timestamp: Date.now(),
+    };
+    if (originalBlob) record.originalBlob = originalBlob;
+    if (cropMeta) record.cropMeta = cropMeta; // { method: 'face'|'center'|'none', success, croppedAt }
+    return performAction('photos', 'readwrite', store => store.put(record));
 };
 
 export const getPhotoBlob = async (studentId) => {
     const result = await performAction('photos', 'readonly', store => store.get(studentId));
     return result ? result.blob : null;
+};
+
+export const getPhotoRecord = async (studentId) => {
+    return performAction('photos', 'readonly', store => store.get(studentId));
+};
+
+export const getOriginalPhotoBlob = async (studentId) => {
+    const result = await performAction('photos', 'readonly', store => store.get(studentId));
+    return result ? (result.originalBlob || result.blob) : null;
+};
+
+export const updateCroppedBlob = async (studentId, croppedBlob, cropMeta) => {
+    const existing = await performAction('photos', 'readonly', store => store.get(studentId));
+    if (!existing) {
+        // 沒有原圖快取就無從更新
+        return false;
+    }
+    const updated = {
+        ...existing,
+        blob: croppedBlob,
+        cropMeta: cropMeta || existing.cropMeta,
+        timestamp: Date.now(),
+    };
+    await performAction('photos', 'readwrite', store => store.put(updated));
+    return true;
 };
 
 export const clearPhotoCache = () => performAction('photos', 'readwrite', store => store.clear());

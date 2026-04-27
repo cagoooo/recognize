@@ -15,14 +15,48 @@ import {
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { compressImage } from '../lib/imageUtils';
+import { smartCropFace } from '../lib/faceCrop';
 import {
     getClasses,
     saveClasses,
     getStudentsByClass,
     saveStudents,
     savePhotoBlob,
-    getPhotoBlob
+    getPhotoBlob,
+    getOriginalPhotoBlob
 } from '../lib/db';
+
+/**
+ * 上傳流程共用：壓縮 → 人臉裁切 → 上傳裁切版到 Storage → 雙存到 IndexedDB
+ * 返回 { photoUrl, cropMeta }
+ */
+const processAndUploadPhoto = async (photoFile) => {
+    const compressed = await compressImage(photoFile);
+    const compressedBlob = compressed instanceof Blob ? compressed : compressed; // File 也是 Blob
+
+    let uploadBlob = compressedBlob;
+    let cropMeta = { method: 'none', success: false, croppedAt: Date.now() };
+
+    try {
+        const cropResult = await smartCropFace(compressedBlob);
+        uploadBlob = cropResult.blob;
+        cropMeta = {
+            method: cropResult.success ? 'face' : 'center',
+            success: cropResult.success,
+            reason: cropResult.reason,
+            croppedAt: Date.now(),
+        };
+    } catch (err) {
+        console.warn('Face crop pipeline failed, uploading compressed original:', err);
+    }
+
+    const fileName = `${Date.now()}_${compressed.name || 'photo.jpg'}`;
+    const storageRef = ref(storage, `students/${fileName}`);
+    await uploadBytes(storageRef, uploadBlob);
+    const photoUrl = await getDownloadURL(storageRef);
+
+    return { photoUrl, uploadBlob, originalBlob: compressedBlob, cropMeta };
+};
 
 /**
  * 背景照片快取機制
@@ -151,24 +185,41 @@ export const useStudents = (classId) => {
 
     const addStudent = async (name, photoFile, seatNumber = "") => {
         let photoUrl = "";
+        let cropMeta = null;
+        let pendingPhotoCache = null;
+
         if (photoFile) {
-            // 上傳前先壓縮圖片（最大 800px 長邊 + 修正 EXIF 旋轉）
-            const compressedFile = await compressImage(photoFile);
-            const storageRef = ref(storage, `students/${Date.now()}_${compressedFile.name}`);
-            await uploadBytes(storageRef, compressedFile);
-            photoUrl = await getDownloadURL(storageRef);
+            const result = await processAndUploadPhoto(photoFile);
+            photoUrl = result.photoUrl;
+            cropMeta = result.cropMeta;
+            pendingPhotoCache = result;
         }
 
-        return addDoc(collection(db, 'students'), {
+        const docRef = await addDoc(collection(db, 'students'), {
             name,
             seatNumber: String(seatNumber),
             classId,
             photoUrl,
+            cropMeta,
             wrongCount: 0,
             tags: [],
             stats: { totalAttempts: 0, correctAttempts: 0 },
             createdAt: serverTimestamp()
         });
+
+        // 同步寫進 IndexedDB（裁切版供顯示，原圖備存供日後重新裁切）
+        if (pendingPhotoCache) {
+            try {
+                await savePhotoBlob(docRef.id, pendingPhotoCache.uploadBlob, {
+                    originalBlob: pendingPhotoCache.originalBlob,
+                    cropMeta: pendingPhotoCache.cropMeta,
+                });
+            } catch (e) {
+                console.warn('Save photo cache after addStudent failed:', e);
+            }
+        }
+
+        return docRef;
     };
 
     const batchAddStudents = async (studentList) => {
@@ -190,17 +241,53 @@ export const useStudents = (classId) => {
     };
 
     const updateStudentPhoto = async (studentId, photoFile) => {
-        // 上傳前先壓縮圖片（最大 800px 長邊 + 修正 EXIF 旋轉）
-        const compressedFile = await compressImage(photoFile);
-        const storageRef = ref(storage, `students/${Date.now()}_${compressedFile.name}`);
-        await uploadBytes(storageRef, compressedFile);
-        const photoUrl = await getDownloadURL(storageRef);
-        await updateDoc(doc(db, 'students', studentId), { photoUrl });
+        const { photoUrl, uploadBlob, originalBlob, cropMeta } = await processAndUploadPhoto(photoFile);
+        await updateDoc(doc(db, 'students', studentId), { photoUrl, cropMeta });
+        try {
+            await savePhotoBlob(studentId, uploadBlob, { originalBlob, cropMeta });
+        } catch (e) {
+            console.warn('Save photo cache after updateStudentPhoto failed:', e);
+        }
         return photoUrl;
     };
 
     const deleteStudent = (id) => {
         return deleteDoc(doc(db, 'students', id));
+    };
+
+    /**
+     * 重新對學生現有照片跑一次人臉裁切
+     *  - 優先用 IndexedDB 的 originalBlob（v3.8+ 上傳保留的原圖）
+     *  - 無原圖則 fallback 到當前 photoUrl（適用 v3.8 前的舊資料）
+     */
+    const recropStudentPhoto = async (studentId, currentPhotoUrl) => {
+        let sourceBlob = await getOriginalPhotoBlob(studentId);
+        if (!sourceBlob && currentPhotoUrl) {
+            const resp = await fetch(currentPhotoUrl);
+            sourceBlob = await resp.blob();
+        }
+        if (!sourceBlob) {
+            throw new Error('找不到可用的原始照片，請重新上傳');
+        }
+
+        const cropResult = await smartCropFace(sourceBlob);
+        const cropMeta = {
+            method: cropResult.success ? 'face' : 'center',
+            success: cropResult.success,
+            reason: cropResult.reason,
+            croppedAt: Date.now(),
+        };
+
+        // 上傳新裁切版（蓋掉 photoUrl）
+        const fileName = `${Date.now()}_recrop.jpg`;
+        const storageRef = ref(storage, `students/${fileName}`);
+        await uploadBytes(storageRef, cropResult.blob);
+        const photoUrl = await getDownloadURL(storageRef);
+
+        await updateDoc(doc(db, 'students', studentId), { photoUrl, cropMeta });
+        await savePhotoBlob(studentId, cropResult.blob, { originalBlob: sourceBlob, cropMeta });
+
+        return { photoUrl, cropMeta };
     };
 
     const updateStudentTags = async (studentId, tags) => {
@@ -211,7 +298,7 @@ export const useStudents = (classId) => {
         await updateDoc(doc(db, 'students', studentId), { description });
     };
 
-    return { students, loading, addStudent, batchAddStudents, updateStudentPhoto, deleteStudent, updateStudentTags, updateStudentDescription };
+    return { students, loading, addStudent, batchAddStudents, updateStudentPhoto, deleteStudent, updateStudentTags, updateStudentDescription, recropStudentPhoto };
 };
 
 export const updateStudentAiHint = async (studentId, aiHint) => {
