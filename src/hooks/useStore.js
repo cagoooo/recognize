@@ -73,11 +73,10 @@ const processAndUploadPhoto = async (photoFile) => {
         const cropResult = await smartCropFace(compressedBlob);
         uploadBlob = cropResult.blob;
         cropMeta = {
-            method: cropResult.success ? 'face' : 'center',
+            method: cropResult.success ? 'face' : 'none', // 偵測失敗 = 保留原圖
             success: cropResult.success,
             croppedAt: Date.now(),
         };
-        // Firestore 不接受 undefined，只有真的有 reason 時才塞欄位
         if (cropResult.reason) cropMeta.reason = cropResult.reason;
     } catch (err) {
         console.warn('Face crop pipeline failed, uploading compressed original:', err);
@@ -353,11 +352,10 @@ export const useStudents = (classId) => {
 
         const cropResult = await smartCropFace(sourceBlob);
         const cropMeta = {
-            method: cropResult.success ? 'face' : 'center',
+            method: cropResult.success ? 'face' : 'none', // 偵測失敗 = 保留原圖
             success: cropResult.success,
             croppedAt: Date.now(),
         };
-        // Firestore 不接受 undefined
         if (cropResult.reason) cropMeta.reason = cropResult.reason;
 
         // 上傳新裁切版（蓋掉 photoUrl）

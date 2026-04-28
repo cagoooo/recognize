@@ -143,10 +143,13 @@ async function centerCropFallback(blob) {
 /**
  * 主入口：對 Blob 做人臉偵測 + 智慧裁切
  *
+ * 偵測失敗時 **保留原圖** 不做中央裁切，避免全身照被切到頭頂或腳部
+ * （之前用中央裁切會把站在小範圍的人切到沒頭，使用者反映實際遇到）
+ *
  * @param {Blob} blob - 來源圖片（建議先過 compressImage）
  * @returns {Promise<{
  *   blob: Blob,
- *   success: boolean,    // true = 偵測到人臉並裁切；false = 偵測失敗（已用中央裁切兜底）
+ *   success: boolean,    // true = 偵測到人臉並裁切；false = 保留原圖
  *   reason?: string,     // 失敗原因（debug 用）
  * }>}
  */
@@ -155,27 +158,21 @@ export async function smartCropFace(blob) {
         const detector = await getDetector();
         const img = await blobToImage(blob);
 
-        // MediaPipe 接受 ImageBitmap / HTMLImageElement
         const result = detector.detect(img);
         const primary = pickPrimaryFace(result.detections, img.naturalWidth, img.naturalHeight);
 
         if (!primary) {
-            const fallback = await centerCropFallback(blob);
-            return { blob: fallback, success: false, reason: 'no-face-detected' };
+            // 偵測不到人臉 → 保留原圖（避免中央裁切切爆全身照）
+            return { blob, success: false, reason: 'no-face-detected' };
         }
 
         const { sx, sy, side } = computeCropRect(primary, img.naturalWidth, img.naturalHeight);
         const cropped = await renderToBlob(img, sx, sy, side);
         return { blob: cropped, success: true };
     } catch (err) {
-        console.warn('Face detection failed, falling back to center crop:', err);
-        try {
-            const fallback = await centerCropFallback(blob);
-            return { blob: fallback, success: false, reason: err.message || 'detector-error' };
-        } catch {
-            // 連 fallback 都失敗 → 回傳原圖
-            return { blob, success: false, reason: 'fallback-failed' };
-        }
+        console.warn('Face detection failed, keeping original image:', err);
+        // 偵測器壞了（model 404 / WASM 載入失敗）也保留原圖
+        return { blob, success: false, reason: err.message || 'detector-error' };
     }
 }
 

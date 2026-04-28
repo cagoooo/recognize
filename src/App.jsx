@@ -2011,7 +2011,7 @@ const StudentManager = ({ cls, userId, onBack, onStartGame }) => {
                                     </div>
                                     <div className="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-center">
                                         <div className="text-2xl font-black text-amber-600">{batchCrop.fallback}</div>
-                                        <div className="text-[10px] text-amber-700 font-bold uppercase tracking-wider">中央兜底</div>
+                                        <div className="text-[10px] text-amber-700 font-bold uppercase tracking-wider">保留原圖</div>
                                     </div>
                                     <div className="rounded-xl bg-slate-100 border border-slate-200 px-3 py-2 text-center">
                                         <div className="text-2xl font-black text-slate-500">{batchCrop.skipped}</div>
@@ -2553,11 +2553,11 @@ const TagEditor = ({ student, onClose, onSave, onRecrop, onUploadPhoto }) => {
                     </div>
 
                     {/* 裁切狀態徽章 / 失敗提示 */}
-                    {(student.cropMeta?.method === 'center' || (recropResult && !recropResult.ok) || (recropResult?.ok && recropResult.method === 'center')) && (
+                    {(student.cropMeta?.method === 'none' || student.cropMeta?.method === 'center' || (recropResult && !recropResult.ok) || (recropResult?.ok && (recropResult.method === 'none' || recropResult.method === 'center'))) && (
                         <div className="absolute bottom-4 left-4 right-4 md:left-6 md:right-6 z-30 pointer-events-none flex justify-center">
                             <div className="bg-amber-500/90 backdrop-blur-md text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg border border-amber-300/50 flex items-center gap-2">
                                 <span>⚠️</span>
-                                <span>{recropResult?.ok === false ? recropResult.reason : '未偵測到人臉，使用中央裁切'}</span>
+                                <span>{recropResult?.ok === false ? recropResult.reason : '未偵測到人臉，保留原圖'}</span>
                             </div>
                         </div>
                     )}
