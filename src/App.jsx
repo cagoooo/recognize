@@ -47,6 +47,7 @@ import QuickPreview from './components/QuickPreview';
 import GameMode from './components/GameMode';
 import StatsView from './components/StatsView';
 import InsightBook from './components/InsightBook';
+import VersionBadge from './components/VersionBadge';
 
 const App = () => {
     const { user, loading, login, logout } = useAuth();
@@ -273,6 +274,8 @@ const App = () => {
                     )}
                 </AnimatePresence>
             </main>
+
+            <VersionBadge />
         </div>
     );
 };
