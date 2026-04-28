@@ -184,3 +184,7 @@ export const updateCroppedBlob = async (studentId, croppedBlob, cropMeta) => {
 };
 
 export const clearPhotoCache = () => performAction('photos', 'readwrite', store => store.clear());
+
+/** 刪除單一學生的照片快取（IndexedDB photo store） */
+export const deletePhotoBlob = (studentId) =>
+    performAction('photos', 'readwrite', store => store.delete(studentId));

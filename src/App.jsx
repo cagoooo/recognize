@@ -885,9 +885,10 @@ const QuickStart = ({ cls, onBack, onStartGame, onNavigate }) => {
 
 const StudentManager = ({ cls, userId, onBack, onStartGame }) => {
     const isShared = !!cls._isShared; // 共享進來的班級 → 唯讀
-    const { students, addStudent, batchAddStudents, updateStudentPhoto, deleteStudent, updateStudentTags, updateStudentDescription, recropStudentPhoto } = useStudents(cls.id);
+    const { students, addStudent, batchAddStudents, updateStudentPhoto, deleteStudent, updateStudentTags, updateStudentDescription, recropStudentPhoto, clearStudentPhoto } = useStudents(cls.id);
     const [showInsightBook, setShowInsightBook] = useState(false);
     const [batchCrop, setBatchCrop] = useState(null); // null | { phase, current, total, success, fallback, skipped, failed }
+    const [clearPhotos, setClearPhotos] = useState(null); // null | { phase, current, total, success, failed }
     const [newName, setNewName] = useState('');
     const [newSeatNumber, setNewSeatNumber] = useState('');
     const [photoFile, setPhotoFile] = useState(null);
@@ -1168,6 +1169,46 @@ const StudentManager = ({ cls, userId, onBack, onStartGame }) => {
         setBatchCrop(prev => ({ ...prev, phase: 'done', currentName: '' }));
     };
 
+    /**
+     * 一鍵清除全班照片（保留學生資料、tags、戰績）
+     *  - photoUrl 設空、cropMeta 設 null
+     *  - IndexedDB 對應 blob 也刪掉
+     *  - Firebase Storage 上的檔案不動（避免誤殺；Storage 月費對教學用量無感）
+     */
+    const handleClearAllPhotos = async () => {
+        const withPhoto = students.filter(s => s.photoUrl);
+        if (withPhoto.length === 0) {
+            alert('班級內目前沒有任何照片可清除');
+            return;
+        }
+        const ok = confirm(
+            `⚠️ 即將清除 ${withPhoto.length} 位學生的照片！\n\n` +
+            `學生姓名、座號、標籤、戰績都會保留，只移除照片連結。\n` +
+            `清除後可以重新上傳新照片。\n\n` +
+            `此動作不可復原（除非你有班級 ZIP 備份）。\n\n` +
+            `確定要清除嗎？`
+        );
+        if (!ok) return;
+        const ok2 = confirm(`再次確認：真的要清除 ${withPhoto.length} 位學生的照片？`);
+        if (!ok2) return;
+
+        setClearPhotos({ phase: 'running', current: 0, total: withPhoto.length, success: 0, failed: 0, currentName: '' });
+
+        for (let i = 0; i < withPhoto.length; i++) {
+            const student = withPhoto[i];
+            setClearPhotos(prev => ({ ...prev, current: i + 1, currentName: student.name }));
+            try {
+                await clearStudentPhoto(student.id);
+                setClearPhotos(prev => ({ ...prev, success: prev.success + 1 }));
+            } catch (err) {
+                console.warn(`Clear photo failed for ${student.name}:`, err);
+                setClearPhotos(prev => ({ ...prev, failed: prev.failed + 1 }));
+            }
+        }
+
+        setClearPhotos(prev => ({ ...prev, phase: 'done', currentName: '' }));
+    };
+
     const handleExportBackup = async () => {
         if (students.length === 0) {
             alert('班級沒有學生資料可供匯出。');
@@ -1436,13 +1477,25 @@ const StudentManager = ({ cls, userId, onBack, onStartGame }) => {
 
                     {/* Import Instructions (Collapsible) */}
                     <div className="w-full max-w-4xl mx-auto mt-6 px-4">
-                        <button
-                            onClick={() => setShowImportHelp(!showImportHelp)}
-                            className="btn-glass-pill mx-auto mb-6"
-                        >
-                            <Info className="w-4 h-4" />
-                            <span>{showImportHelp ? '隱藏匯入說明' : '查看匯入格式說明'}</span>
-                        </button>
+                        <div className="flex flex-wrap items-center justify-center gap-3 mb-6">
+                            <button
+                                onClick={() => setShowImportHelp(!showImportHelp)}
+                                className="btn-glass-pill"
+                            >
+                                <Info className="w-4 h-4" />
+                                <span>{showImportHelp ? '隱藏匯入說明' : '查看匯入格式說明'}</span>
+                            </button>
+
+                            <button
+                                onClick={handleClearAllPhotos}
+                                disabled={!!clearPhotos || students.filter(s => s.photoUrl).length === 0}
+                                className="btn-glass-pill !bg-rose-500/10 !text-rose-600 !border-rose-200 hover:!bg-rose-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
+                                title="清除全班所有學生的照片連結（保留姓名 / 座號 / 標籤 / 戰績）"
+                            >
+                                <Trash2 className="w-4 h-4" />
+                                <span>清除全班照片</span>
+                            </button>
+                        </div>
 
                         <AnimatePresence>
                             {showImportHelp && (
@@ -1979,6 +2032,65 @@ const StudentManager = ({ cls, userId, onBack, onStartGame }) => {
                                     </button>
                                 )}
                                 {batchCrop.phase === 'running' && (
+                                    <p className="text-center text-xs text-slate-400 font-bold">
+                                        請保持頁面開啟，處理中…
+                                    </p>
+                                )}
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* 清除全班照片進度 Modal */}
+            <AnimatePresence>
+                {clearPhotos && (
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4">
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            className="clay-card p-0 max-w-md w-full overflow-hidden shadow-2xl"
+                        >
+                            <div className="bg-gradient-to-br from-rose-500 via-pink-500 to-orange-500 text-white px-6 py-5 flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center">
+                                    <Trash2 className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-black">
+                                        {clearPhotos.phase === 'running' ? '清除全班照片中...' : '清除完成'}
+                                    </h2>
+                                    <p className="text-xs text-white/80 font-bold">
+                                        {clearPhotos.phase === 'running'
+                                            ? `${clearPhotos.current} / ${clearPhotos.total}　${clearPhotos.currentName ? '正在處理：' + clearPhotos.currentName : ''}`
+                                            : '可重新上傳新照片了'}
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="px-6 py-5 bg-slate-50/60">
+                                <div className="w-full bg-slate-200 rounded-full h-3 overflow-hidden mb-4">
+                                    <motion.div
+                                        className="h-full bg-gradient-to-r from-rose-400 to-orange-500"
+                                        animate={{ width: `${(clearPhotos.current / clearPhotos.total) * 100}%` }}
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-3 mb-4">
+                                    <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2 text-center">
+                                        <div className="text-2xl font-black text-emerald-600">{clearPhotos.success}</div>
+                                        <div className="text-[10px] text-emerald-700 font-bold uppercase tracking-wider">已清除</div>
+                                    </div>
+                                    <div className="rounded-xl bg-rose-50 border border-rose-200 px-3 py-2 text-center">
+                                        <div className="text-2xl font-black text-rose-500">{clearPhotos.failed}</div>
+                                        <div className="text-[10px] text-rose-700 font-bold uppercase tracking-wider">失敗</div>
+                                    </div>
+                                </div>
+                                {clearPhotos.phase === 'done' ? (
+                                    <button
+                                        onClick={() => setClearPhotos(null)}
+                                        className="w-full py-3 rounded-xl bg-gradient-to-r from-rose-500 to-orange-500 text-white font-black shadow-md hover:scale-[1.02] transition-transform"
+                                    >
+                                        完成
+                                    </button>
+                                ) : (
                                     <p className="text-center text-xs text-slate-400 font-bold">
                                         請保持頁面開啟，處理中…
                                     </p>

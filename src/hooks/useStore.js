@@ -26,7 +26,8 @@ import {
     saveStudents,
     savePhotoBlob,
     getPhotoBlob,
-    getOriginalPhotoBlob
+    getOriginalPhotoBlob,
+    deletePhotoBlob
 } from '../lib/db';
 
 /**
@@ -379,7 +380,23 @@ export const useStudents = (classId) => {
         await updateDoc(doc(db, 'students', studentId), { description });
     };
 
-    return { students, loading, addStudent, batchAddStudents, updateStudentPhoto, deleteStudent, updateStudentTags, updateStudentDescription, recropStudentPhoto };
+    /**
+     * 清除單一學生照片：把 photoUrl/cropMeta 設空 + 刪 IndexedDB cache blob
+     * 不刪 Firebase Storage 上的檔案（避免風險，且 Storage 計費對教學用量幾乎無感）
+     */
+    const clearStudentPhoto = async (studentId) => {
+        await updateDoc(doc(db, 'students', studentId), {
+            photoUrl: '',
+            cropMeta: null,
+        });
+        try {
+            await deletePhotoBlob(studentId);
+        } catch (e) {
+            console.warn('Delete photo blob from IndexedDB failed:', e);
+        }
+    };
+
+    return { students, loading, addStudent, batchAddStudents, updateStudentPhoto, deleteStudent, updateStudentTags, updateStudentDescription, recropStudentPhoto, clearStudentPhoto };
 };
 
 export const updateStudentAiHint = async (studentId, aiHint) => {
