@@ -1872,13 +1872,16 @@ const StudentManager = ({ cls, userId, onBack, onStartGame }) => {
 
 
             {
-                editingTagsStudent && (
+                editingTagsStudent && (() => {
+                    // 從最新 students 抓 doc，避免上傳照片後 Modal 內仍顯示舊快照
+                    const live = students.find(s => s.id === editingTagsStudent.id) || editingTagsStudent;
+                    return (
                     <TagEditor
                         key={editingTagsStudent.id}
-                        student={editingTagsStudent}
+                        student={live}
                         onClose={() => setEditingTagsStudent(null)}
-                        onRecrop={() => recropStudentPhoto(editingTagsStudent.id, editingTagsStudent.photoUrl)}
-                        onUploadPhoto={(file) => updateStudentPhoto(editingTagsStudent.id, file)}
+                        onRecrop={() => recropStudentPhoto(live.id, live.photoUrl)}
+                        onUploadPhoto={(file) => updateStudentPhoto(live.id, file)}
                         onSave={async (tags, description, closeAfterSave = true) => {
                             try {
                                 const updatePromises = [
@@ -1899,7 +1902,8 @@ const StudentManager = ({ cls, userId, onBack, onStartGame }) => {
                             }
                         }}
                     />
-                )
+                    );
+                })()
             }
 
             <AnimatePresence>

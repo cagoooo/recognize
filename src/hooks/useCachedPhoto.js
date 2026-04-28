@@ -40,7 +40,9 @@ export const useCachedPhoto = (studentId, remoteUrl) => {
                 URL.revokeObjectURL(objectUrl);
             }
         };
-    }, [studentId]);
+        // 加入 remoteUrl 依賴：上傳新照片後 photoUrl 變動會觸發重抓 IndexedDB
+        // 取得新存進去的 blob 並 createObjectURL
+    }, [studentId, remoteUrl]);
 
     return localUrl || remoteUrl;
 };
