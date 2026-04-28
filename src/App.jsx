@@ -1878,6 +1878,7 @@ const StudentManager = ({ cls, userId, onBack, onStartGame }) => {
                         student={editingTagsStudent}
                         onClose={() => setEditingTagsStudent(null)}
                         onRecrop={() => recropStudentPhoto(editingTagsStudent.id, editingTagsStudent.photoUrl)}
+                        onUploadPhoto={(file) => updateStudentPhoto(editingTagsStudent.id, file)}
                         onSave={async (tags, description, closeAfterSave = true) => {
                             try {
                                 const updatePromises = [
@@ -2066,9 +2067,13 @@ const StudentCard = ({ student, onEdit, onDelete, onLongPress, readOnly = false 
 };
 
 // Student Details & Tag Editor Modal
-const TagEditor = ({ student, onClose, onSave, onRecrop }) => {
+const TagEditor = ({ student, onClose, onSave, onRecrop, onUploadPhoto }) => {
     const [recropping, setRecropping] = useState(false);
     const [recropResult, setRecropResult] = useState(null); // { ok, method, reason }
+    const [uploadingPhoto, setUploadingPhoto] = useState(false);
+    const [uploadResult, setUploadResult] = useState(null); // { ok, message }
+    const photoInputRef = useRef(null);
+
     const handleRecrop = async () => {
         if (!onRecrop || recropping) return;
         setRecropping(true);
@@ -2081,6 +2086,24 @@ const TagEditor = ({ student, onClose, onSave, onRecrop }) => {
             setRecropResult({ ok: false, reason: err.message || '重新裁切失敗' });
         } finally {
             setRecropping(false);
+        }
+    };
+
+    const handlePhotoUpload = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file || !onUploadPhoto) return;
+        // 重置 input 讓同一個檔案能再次選取觸發 onChange
+        e.target.value = '';
+        setUploadingPhoto(true);
+        setUploadResult(null);
+        try {
+            await onUploadPhoto(file);
+            setUploadResult({ ok: true, message: '照片已更新（自動人臉裁切）' });
+        } catch (err) {
+            console.error('Photo upload failed:', err);
+            setUploadResult({ ok: false, message: err.message || '上傳失敗' });
+        } finally {
+            setUploadingPhoto(false);
         }
     };
     const [tags, setTags] = useState(student.tags || []);
@@ -2233,8 +2256,33 @@ const TagEditor = ({ student, onClose, onSave, onRecrop }) => {
                             <div className="w-32 h-32 mb-4 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-sm">
                                 <User className="w-16 h-16 opacity-50" />
                             </div>
-                            <p className="font-bold text-lg opacity-60">無照片</p>
+                            <p className="font-bold text-lg opacity-60 mb-4">無照片</p>
+                            {onUploadPhoto && (
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); photoInputRef.current?.click(); }}
+                                    disabled={uploadingPhoto}
+                                    className="btn-clay btn-clay-primary px-6 py-3 text-sm flex items-center gap-2 shadow-xl border-2 border-white/30 hover:scale-105 transition-transform disabled:opacity-60"
+                                >
+                                    {uploadingPhoto ? (
+                                        <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                                    ) : (
+                                        <Upload className="w-4 h-4" />
+                                    )}
+                                    <span className="font-bold">{uploadingPhoto ? '上傳中...' : '上傳照片'}</span>
+                                </button>
+                            )}
                         </div>
+                    )}
+
+                    {/* 隱藏的 file input（給「上傳照片」「更換照片」按鈕共用） */}
+                    {onUploadPhoto && (
+                        <input
+                            ref={photoInputRef}
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={handlePhotoUpload}
+                        />
                     )}
 
                     {/* 放大提示按鈕 */}
@@ -2355,6 +2403,22 @@ const TagEditor = ({ student, onClose, onSave, onRecrop }) => {
                             </button>
                         )}
 
+                        {student.photoUrl && onUploadPhoto && (
+                            <button
+                                onClick={(e) => { e.stopPropagation(); photoInputRef.current?.click(); }}
+                                disabled={uploadingPhoto}
+                                className={`btn-glass-pill !bg-white/90 !backdrop-blur-xl shadow-lg border-2 border-sky-100 text-sky-600 hover:scale-105 transition-all ${uploadingPhoto ? 'opacity-80 cursor-wait' : ''}`}
+                                title="更換這位學生的照片（自動人臉裁切）"
+                            >
+                                {uploadingPhoto ? (
+                                    <div className="w-5 h-5 border-2 border-sky-500 border-t-transparent rounded-full animate-spin" />
+                                ) : (
+                                    <Upload className="w-5 h-5" />
+                                )}
+                                <span className="font-bold">{uploadingPhoto ? '上傳中...' : '更換照片'}</span>
+                            </button>
+                        )}
+
                         {student.photoUrl && onRecrop && (
                             <button
                                 onClick={(e) => { e.stopPropagation(); handleRecrop(); }}
@@ -2386,6 +2450,16 @@ const TagEditor = ({ student, onClose, onSave, onRecrop }) => {
                             <div className="bg-emerald-500/90 backdrop-blur-md text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg border border-emerald-300/50 flex items-center gap-2">
                                 <span>✓</span>
                                 <span>已重新對齊人臉</span>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 上傳結果 toast */}
+                    {uploadResult && (
+                        <div className="absolute bottom-4 left-4 right-4 md:left-6 md:right-6 z-30 pointer-events-none flex justify-center">
+                            <div className={`backdrop-blur-md text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg border flex items-center gap-2 ${uploadResult.ok ? 'bg-sky-500/90 border-sky-300/50' : 'bg-rose-500/90 border-rose-300/50'}`}>
+                                <span>{uploadResult.ok ? '✓' : '⚠️'}</span>
+                                <span>{uploadResult.message}</span>
                             </div>
                         </div>
                     )}
