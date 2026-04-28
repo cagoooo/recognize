@@ -322,12 +322,14 @@ export const useStudents = (classId) => {
 
     const updateStudentPhoto = async (studentId, photoFile) => {
         const { photoUrl, uploadBlob, originalBlob, cropMeta } = await processAndUploadPhoto(photoFile);
-        await updateDoc(doc(db, 'students', studentId), { photoUrl, cropMeta });
+        // 先寫 IndexedDB，再 updateDoc 觸發 onSnapshot：
+        // 避免 useCachedPhoto 在 IndexedDB 還是舊 blob 時就 re-run 顯示舊圖
         try {
             await savePhotoBlob(studentId, uploadBlob, { originalBlob, cropMeta });
         } catch (e) {
-            console.warn('Save photo cache after updateStudentPhoto failed:', e);
+            console.warn('Save photo cache before updateStudentPhoto failed:', e);
         }
+        await updateDoc(doc(db, 'students', studentId), { photoUrl, cropMeta });
         return photoUrl;
     };
 
@@ -364,8 +366,13 @@ export const useStudents = (classId) => {
         await uploadBytes(storageRef, cropResult.blob);
         const photoUrl = await getDownloadURL(storageRef);
 
+        // 先寫 IndexedDB，再 updateDoc：避免 useCachedPhoto 觸發時讀到舊 blob
+        try {
+            await savePhotoBlob(studentId, cropResult.blob, { originalBlob: sourceBlob, cropMeta });
+        } catch (e) {
+            console.warn('Save photo cache before recrop updateDoc failed:', e);
+        }
         await updateDoc(doc(db, 'students', studentId), { photoUrl, cropMeta });
-        await savePhotoBlob(studentId, cropResult.blob, { originalBlob: sourceBlob, cropMeta });
 
         return { photoUrl, cropMeta };
     };
