@@ -885,7 +885,7 @@ const QuickStart = ({ cls, onBack, onStartGame, onNavigate }) => {
 
 const StudentManager = ({ cls, userId, onBack, onStartGame }) => {
     const isShared = !!cls._isShared; // 共享進來的班級 → 唯讀
-    const { students, addStudent, batchAddStudents, updateStudentPhoto, deleteStudent, updateStudentTags, updateStudentDescription, recropStudentPhoto, clearStudentPhoto } = useStudents(cls.id);
+    const { students, addStudent, batchAddStudents, updateStudentPhoto, deleteStudent, updateStudentTags, updateStudentDescription, recropStudentPhoto, clearStudentPhoto, restoreOriginalPhoto } = useStudents(cls.id);
     const [showInsightBook, setShowInsightBook] = useState(false);
     const [batchCrop, setBatchCrop] = useState(null); // null | { phase, current, total, success, fallback, skipped, failed }
     const [clearPhotos, setClearPhotos] = useState(null); // null | { phase, current, total, success, failed }
@@ -1998,6 +1998,7 @@ const StudentManager = ({ cls, userId, onBack, onStartGame }) => {
                         onClose={() => setEditingTagsStudent(null)}
                         onRecrop={() => recropStudentPhoto(live.id, live.photoUrl)}
                         onUploadPhoto={(file) => updateStudentPhoto(live.id, file)}
+                        onRestoreOriginal={() => restoreOriginalPhoto(live.id)}
                         onSave={async (tags, description, closeAfterSave = true) => {
                             try {
                                 const updatePromises = [
@@ -2305,12 +2306,29 @@ const StudentCard = ({ student, onEdit, onDelete, onLongPress, readOnly = false 
 };
 
 // Student Details & Tag Editor Modal
-const TagEditor = ({ student, onClose, onSave, onRecrop, onUploadPhoto }) => {
+const TagEditor = ({ student, onClose, onSave, onRecrop, onUploadPhoto, onRestoreOriginal }) => {
     const [recropping, setRecropping] = useState(false);
     const [recropResult, setRecropResult] = useState(null); // { ok, method, reason }
     const [uploadingPhoto, setUploadingPhoto] = useState(false);
     const [uploadResult, setUploadResult] = useState(null); // { ok, message }
+    const [restoring, setRestoring] = useState(false);
     const photoInputRef = useRef(null);
+
+    const handleRestore = async () => {
+        if (!onRestoreOriginal || restoring) return;
+        if (!confirm('要把照片回復成上傳時的原始版本嗎？\n\n會撤銷所有裁切，原始照片會直接顯示。')) return;
+        setRestoring(true);
+        setUploadResult(null);
+        try {
+            await onRestoreOriginal();
+            setUploadResult({ ok: true, message: '已恢復原圖（不裁切）' });
+        } catch (err) {
+            console.error('Restore failed:', err);
+            setUploadResult({ ok: false, message: err.message || '恢復失敗' });
+        } finally {
+            setRestoring(false);
+        }
+    };
 
     const handleRecrop = async () => {
         if (!onRecrop || recropping) return;
@@ -2670,6 +2688,22 @@ const TagEditor = ({ student, onClose, onSave, onRecrop, onUploadPhoto }) => {
                                     <span className="text-lg">✂️</span>
                                 )}
                                 <span className="font-bold">{recropping ? '裁切中...' : '重新裁切'}</span>
+                            </button>
+                        )}
+
+                        {student.photoUrl && onRestoreOriginal && (
+                            <button
+                                onClick={(e) => { e.stopPropagation(); handleRestore(); }}
+                                disabled={restoring}
+                                className={`btn-glass-pill !bg-white/90 !backdrop-blur-xl shadow-lg border-2 border-amber-100 text-amber-700 hover:scale-105 transition-all ${restoring ? 'opacity-80 cursor-wait' : ''}`}
+                                title="撤銷裁切，回復成上傳當下的原始照片"
+                            >
+                                {restoring ? (
+                                    <div className="w-5 h-5 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+                                ) : (
+                                    <RotateCcw className="w-5 h-5" />
+                                )}
+                                <span className="font-bold">{restoring ? '恢復中...' : '恢復原圖'}</span>
                             </button>
                         )}
                     </div>

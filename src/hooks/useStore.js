@@ -386,6 +386,39 @@ export const useStudents = (classId) => {
     };
 
     /**
+     * 恢復原圖：把已裁切的照片回復成上傳當下的原始版本
+     *  - 用 IndexedDB 內 originalBlob（v3.8.0+ 上傳保留）
+     *  - 上傳原圖到 Storage 蓋掉 photoUrl
+     *  - cropMeta.method = 'restored' 表示明確的「使用者選擇不裁切」狀態
+     *  - 沒有 originalBlob 時拋錯（pre-v3.8 照片本來就沒裁切，不應該需要這功能）
+     */
+    const restoreOriginalPhoto = async (studentId) => {
+        const original = await getOriginalPhotoBlob(studentId);
+        if (!original) {
+            throw new Error('找不到原始照片快取（可能是其他裝置匯入或 IndexedDB 已清空），請改用「更換照片」重新上傳');
+        }
+        const fileName = `${Date.now()}_restored.jpg`;
+        const storageRef = ref(storage, `students/${fileName}`);
+        await uploadBytes(storageRef, original);
+        const photoUrl = await getDownloadURL(storageRef);
+
+        const cropMeta = {
+            method: 'restored', // 使用者主動選擇不裁切
+            success: false,
+            croppedAt: Date.now(),
+        };
+
+        // 先寫 IndexedDB 再 updateDoc（避免 race condition 顯示舊圖）
+        try {
+            await savePhotoBlob(studentId, original, { originalBlob: original, cropMeta });
+        } catch (e) {
+            console.warn('Save photo cache before restore updateDoc failed:', e);
+        }
+        await updateDoc(doc(db, 'students', studentId), { photoUrl, cropMeta });
+        return { photoUrl, cropMeta };
+    };
+
+    /**
      * 清除單一學生照片：把 photoUrl/cropMeta 設空 + 刪 IndexedDB cache blob
      * 不刪 Firebase Storage 上的檔案（避免風險，且 Storage 計費對教學用量幾乎無感）
      */
@@ -401,7 +434,7 @@ export const useStudents = (classId) => {
         }
     };
 
-    return { students, loading, addStudent, batchAddStudents, updateStudentPhoto, deleteStudent, updateStudentTags, updateStudentDescription, recropStudentPhoto, clearStudentPhoto };
+    return { students, loading, addStudent, batchAddStudents, updateStudentPhoto, deleteStudent, updateStudentTags, updateStudentDescription, recropStudentPhoto, clearStudentPhoto, restoreOriginalPhoto };
 };
 
 export const updateStudentAiHint = async (studentId, aiHint) => {
