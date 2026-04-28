@@ -252,27 +252,30 @@ const App = () => {
                 </div>
             </header>
 
-            <main className="w-full max-w-5xl px-4 flex flex-col items-center relative z-10 pt-28 md:pt-32 pb-20">
-                {/* Spacer for Fixed Header */}
+            <main className="w-full max-w-5xl px-4 flex flex-col items-stretch relative z-10 pt-28 md:pt-32 pb-20 min-h-screen">
+                {/* Spacer for Fixed Header (mobile only) */}
                 <div className="w-full h-8 md:hidden" />
-                <AnimatePresence mode="wait">
-                    {!user ? (
-                        <HeroSection onLogin={handleLogin} key="hero" />
-                    ) : (
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="w-full flex flex-col items-center"
-                        >
-                            {activeView === 'home' && <Dashboard onNavigate={setActiveView} key="dash" />}
-                            {activeView === 'play' && <ClassManager userId={user.uid} mode="play" onBack={() => setActiveView('home')} onNavigate={setActiveView} onStartGame={startTraining} key="play" />}
-                            {activeView === 'manage' && <ClassManager userId={user.uid} mode="manage" onBack={() => setActiveView('home')} onNavigate={setActiveView} onStartGame={startTraining} key="manage" />}
-                            {activeView === 'game' && <GameMode targetStudents={gameState.targetStudents} allStudents={gameState.allStudents || []} className={gameState.currentClass ? gameState.currentClass.name : ''} gameMode={gameState.gameMode} onBack={() => setActiveView('home')} key="game" />}
-                            {activeView === 'stats' && <StatsView userId={user.uid} onBack={() => setActiveView('home')} key="stats" />}
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+                {/* 撐滿剩餘視窗 + 垂直置中內容 */}
+                <div className="flex-1 w-full flex flex-col items-center justify-center">
+                    <AnimatePresence mode="wait">
+                        {!user ? (
+                            <HeroSection onLogin={handleLogin} key="hero" />
+                        ) : (
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="w-full flex flex-col items-center"
+                            >
+                                {activeView === 'home' && <Dashboard onNavigate={setActiveView} key="dash" />}
+                                {activeView === 'play' && <ClassManager userId={user.uid} mode="play" onBack={() => setActiveView('home')} onNavigate={setActiveView} onStartGame={startTraining} key="play" />}
+                                {activeView === 'manage' && <ClassManager userId={user.uid} mode="manage" onBack={() => setActiveView('home')} onNavigate={setActiveView} onStartGame={startTraining} key="manage" />}
+                                {activeView === 'game' && <GameMode targetStudents={gameState.targetStudents} allStudents={gameState.allStudents || []} className={gameState.currentClass ? gameState.currentClass.name : ''} gameMode={gameState.gameMode} onBack={() => setActiveView('home')} key="game" />}
+                                {activeView === 'stats' && <StatsView userId={user.uid} onBack={() => setActiveView('home')} key="stats" />}
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
             </main>
 
             <VersionBadge />
@@ -284,7 +287,7 @@ const HeroSection = ({ onLogin }) => (
     <motion.div
         initial={{ y: 40, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="relative flex flex-col items-center pt-24 md:pt-28 pb-12 md:pb-20 text-center max-w-4xl mx-auto overflow-hidden md:overflow-visible px-4"
+        className="relative flex flex-col items-center text-center max-w-4xl mx-auto overflow-hidden md:overflow-visible px-4"
     >
         {/* Aurora Background Blobs */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full pointer-events-none z-0">
@@ -333,7 +336,7 @@ const HeroSection = ({ onLogin }) => (
 );
 
 const Dashboard = ({ onNavigate }) => (
-    <div className="flex flex-col items-center justify-center gap-10 md:gap-14 w-full min-h-[calc(100vh-10rem)] md:min-h-[calc(100vh-12rem)] pb-12 md:pb-20">
+    <div className="flex flex-col items-center gap-10 md:gap-14 w-full">
         <motion.div
             whileHover={{ y: -12, scale: 1.01 }}
             onClick={() => onNavigate('play')}
