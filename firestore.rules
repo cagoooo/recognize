@@ -13,11 +13,11 @@ service cloud.firestore {
     }
 
     // 是否在班級的 sharedWith 清單裡（共享進來的科任老師）
+    // 用 .get('sharedWith', []) 安全存取，避免欄位不存在時 'in' 運算崩潰
     function isShared(classData) {
       return isSignedIn()
         && classData != null
-        && classData.sharedWith is list
-        && (request.auth.uid in classData.sharedWith);
+        && (request.auth.uid in classData.get('sharedWith', []));
     }
 
     // 取得班級資料（rules 內 get 會算 1 次讀取，呼叫端要意識成本）
@@ -37,10 +37,12 @@ service cloud.firestore {
       allow get: if isSignedIn() && (
         resource == null
         || canReadClass(resource.data)
-        || resource.data.shareToken is string
+        || resource.data.get('shareToken', '') != ''
       );
+      // list 直接內聯條件（避免 helper 函式造成靜態分析無法證明 query 安全性）
       allow list: if isSignedIn() && (
-        resource == null || canReadClass(resource.data)
+        resource.data.teacherUid == request.auth.uid
+        || (request.auth.uid in resource.data.get('sharedWith', []))
       );
 
       // 建立：必須是登入者本人為 teacherUid
@@ -129,12 +131,12 @@ service cloud.firestore {
 
     // ========== 班級攻略本 class_insights ==========
     // 攻略本由班導產生並擁有；共享老師可讀取（看班導建好的內容）
+    // resource == null 視為允許（讓 getDoc 對未存在的 insight 不會 permission-denied）
     match /class_insights/{classId} {
       allow read: if isSignedIn() && (
         resource == null
-          ? false
-          : (resource.data.teacherUid == request.auth.uid
-              || isShared(classOf(classId)))
+        || resource.data.teacherUid == request.auth.uid
+        || isShared(classOf(classId))
       );
 
       allow create: if isSignedIn()
