@@ -13,7 +13,10 @@
  *   - module-level singleton 避免重複初始化
  */
 
-const MODEL_URL = 'https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.task';
+// 注意：副檔名是 .tflite 不是 .task
+// .task 是某些 MediaPipe 任務（face_landmarker / gesture_recognizer 等）的 bundle 格式
+// face_detector 標準分發只有 .tflite。先前的 .task 路徑是 doc typo 導致 404。
+const MODEL_URL = 'https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite';
 const WASM_BASE = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.34/wasm';
 
 const OUTPUT_SIZE = 800;

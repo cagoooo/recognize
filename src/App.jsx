@@ -39,7 +39,8 @@ import {
     AlertTriangle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useClasses, useStudents } from './hooks/useStore';
+import { useClasses, useStudents, joinClassByShareLink } from './hooks/useStore';
+import { consumeJoinToken } from './lib/shareToken';
 import { useGeminiVision } from './hooks/useGeminiVision';
 import { useCachedPhoto } from './hooks/useCachedPhoto';
 import { useLongPress } from './hooks/useLongPress';
@@ -48,6 +49,7 @@ import GameMode from './components/GameMode';
 import StatsView from './components/StatsView';
 import InsightBook from './components/InsightBook';
 import VersionBadge from './components/VersionBadge';
+import ShareClassModal from './components/ShareClassModal';
 
 const App = () => {
     const { user, loading, login, logout } = useAuth();
@@ -55,6 +57,8 @@ const App = () => {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const dropdownRef = useRef(null);
     const [gameState, setGameState] = useState({ active: false, classId: null, className: '', targetStudents: [], allStudents: [] });
+    const [joinNotice, setJoinNotice] = useState(null); // { type: 'success'|'error', message }
+    const pendingJoinRef = useRef(null);
 
     // --- Header Idle Logic ---
     const [isHeaderActive, setIsHeaderActive] = useState(true);
@@ -84,6 +88,42 @@ const App = () => {
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
+
+    // 開機時消化 ?join=classId.token —— 暫存到 ref，等 user 登入後執行
+    useEffect(() => {
+        const parsed = consumeJoinToken();
+        if (parsed) pendingJoinRef.current = parsed;
+    }, []);
+
+    // 一旦 user 出現 + 有 pending join，自動加入該班級
+    useEffect(() => {
+        if (!user || !pendingJoinRef.current) return;
+        const { classId, token } = pendingJoinRef.current;
+        pendingJoinRef.current = null;
+        (async () => {
+            try {
+                const result = await joinClassByShareLink(classId, token, user.uid);
+                if (result.alreadyOwner) {
+                    setJoinNotice({ type: 'info', message: `「${result.name}」是你自己建立的班級` });
+                } else if (result.alreadyJoined) {
+                    setJoinNotice({ type: 'info', message: `已經加入過「${result.name}」` });
+                } else {
+                    setJoinNotice({ type: 'success', message: `已加入「${result.name}」班級！` });
+                }
+                setActiveView('manage');
+            } catch (err) {
+                console.error('Join failed:', err);
+                setJoinNotice({ type: 'error', message: err.message || '加入失敗' });
+            }
+        })();
+    }, [user]);
+
+    // joinNotice 5 秒後自動消失
+    useEffect(() => {
+        if (!joinNotice) return;
+        const t = setTimeout(() => setJoinNotice(null), 5000);
+        return () => clearTimeout(t);
+    }, [joinNotice]);
 
     const handleLogin = async () => {
         try {
@@ -279,6 +319,28 @@ const App = () => {
             </main>
 
             <VersionBadge />
+
+            {/* 班級加入結果 toast */}
+            <AnimatePresence>
+                {joinNotice && (
+                    <motion.div
+                        initial={{ y: -20, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        exit={{ y: -20, opacity: 0 }}
+                        className="fixed top-24 left-1/2 -translate-x-1/2 z-[9999] max-w-md w-[90%] pointer-events-none"
+                    >
+                        <div className={`px-5 py-3 rounded-2xl shadow-xl border-2 backdrop-blur-xl flex items-center gap-3 ${joinNotice.type === 'success' ? 'bg-emerald-500/95 border-emerald-300 text-white' :
+                            joinNotice.type === 'error' ? 'bg-rose-500/95 border-rose-300 text-white' :
+                                'bg-indigo-500/95 border-indigo-300 text-white'
+                            }`}>
+                            <span className="text-2xl">
+                                {joinNotice.type === 'success' ? '🎉' : joinNotice.type === 'error' ? '⚠️' : 'ℹ️'}
+                            </span>
+                            <p className="font-black text-sm flex-1">{joinNotice.message}</p>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };
@@ -433,7 +495,8 @@ const ConfirmDialog = ({ isOpen, title, message, onConfirm, onCancel, confirmTex
 );
 
 const ClassManager = ({ userId, onBack, onStartGame, onNavigate, mode = 'manage' }) => {
-    const { classes, addClass, deleteClass } = useClasses(userId);
+    const { classes, addClass, deleteClass, ensureShareToken, regenerateShareToken, removeSharedTeacher } = useClasses(userId);
+    const [shareModalClass, setShareModalClass] = useState(null);
     const [newClassName, setNewClassName] = useState('');
     const [confirmConfig, setConfirmConfig] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
 
@@ -571,19 +634,43 @@ const ClassManager = ({ userId, onBack, onStartGame, onNavigate, mode = 'manage'
                                 onClick={() => setSelectedClass(cls)}
                                 className="clay-card p-6 flex flex-col items-center cursor-pointer w-full relative group transition-all border-4 border-white hover:border-indigo-100 shadow-sm"
                             >
-                                <button
-                                    onClick={(e) => handleDeleteClass(e, cls.id, cls.name)}
-                                    className="absolute top-3 right-3 w-8 h-8 bg-white/80 backdrop-blur-sm rounded-xl text-rose-300 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 z-20 shadow-sm"
-                                    title="刪除"
-                                >
-                                    <Trash2 className="w-4 h-4" />
-                                </button>
+                                {/* 共享進來的班級不顯示刪除按鈕 + 顯示共享徽章 */}
+                                {cls._isShared ? (
+                                    <span
+                                        className="absolute top-3 right-3 px-2 py-1 rounded-full bg-emerald-500/15 text-emerald-700 text-[9px] font-black tracking-wider z-20 border border-emerald-300/50"
+                                        title="此班級由其他老師分享給你（唯讀）"
+                                    >
+                                        🔗 共享
+                                    </span>
+                                ) : (
+                                    <>
+                                        <button
+                                            onClick={(e) => handleDeleteClass(e, cls.id, cls.name)}
+                                            className="absolute top-3 right-3 w-8 h-8 bg-white/80 backdrop-blur-sm rounded-xl text-rose-300 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 z-20 shadow-sm"
+                                            title="刪除"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); setShareModalClass(cls); }}
+                                            className="absolute top-3 left-3 w-8 h-8 bg-white/80 backdrop-blur-sm rounded-xl text-emerald-400 hover:text-emerald-600 hover:bg-emerald-50 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 z-20 shadow-sm"
+                                            title="分享給科任老師"
+                                        >
+                                            <Sparkles className="w-4 h-4" />
+                                        </button>
+                                    </>
+                                )}
 
                                 <div className="w-16 h-16 bg-indigo-50 rounded-2xl flex items-center justify-center mb-4 shadow-sm group-hover:scale-105 transition-transform duration-300 relative z-10 border-2 border-white">
                                     <GraduationCap className="text-indigo-500 w-8 h-8" />
                                 </div>
 
                                 <h3 className="text-xl font-black text-indigo-950 relative z-10">{cls.name}</h3>
+                                {Array.isArray(cls.sharedWith) && cls.sharedWith.length > 0 && !cls._isShared && (
+                                    <p className="text-[10px] text-emerald-600 font-bold mt-1 z-10 relative">
+                                        已分享給 {cls.sharedWith.length} 位老師
+                                    </p>
+                                )}
 
                                 <div className="mt-4 flex items-center gap-2 relative z-10 opacity-30 group-hover:opacity-100 transition-opacity">
                                     <span className="text-indigo-400 font-bold text-[10px] uppercase tracking-widest">Open Manager</span>
@@ -644,6 +731,22 @@ const ClassManager = ({ userId, onBack, onStartGame, onNavigate, mode = 'manage'
                 onCancel={() => setConfirmConfig(prev => ({ ...prev, isOpen: false }))}
                 confirmText="確認刪除"
             />
+
+            <AnimatePresence>
+                {shareModalClass && (() => {
+                    // 從最新 classes 找對應 doc，避免 sharedWith 變動後 Modal 顯示 stale 資料
+                    const live = classes.find(c => c.id === shareModalClass.id) || shareModalClass;
+                    return (
+                        <ShareClassModal
+                            classData={live}
+                            onClose={() => setShareModalClass(null)}
+                            onEnsureToken={() => ensureShareToken(live.id)}
+                            onRegenerate={() => regenerateShareToken(live.id)}
+                            onRemoveTeacher={(uid) => removeSharedTeacher(live.id, uid)}
+                        />
+                    );
+                })()}
+            </AnimatePresence>
         </motion.div>
     );
 };
@@ -781,6 +884,7 @@ const QuickStart = ({ cls, onBack, onStartGame, onNavigate }) => {
 };
 
 const StudentManager = ({ cls, userId, onBack, onStartGame }) => {
+    const isShared = !!cls._isShared; // 共享進來的班級 → 唯讀
     const { students, addStudent, batchAddStudents, updateStudentPhoto, deleteStudent, updateStudentTags, updateStudentDescription, recropStudentPhoto } = useStudents(cls.id);
     const [showInsightBook, setShowInsightBook] = useState(false);
     const [newName, setNewName] = useState('');
@@ -1027,6 +1131,17 @@ const StudentManager = ({ cls, userId, onBack, onStartGame }) => {
 
     return (
         <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center w-full">
+            {isShared && (
+                <div className="w-full max-w-4xl mb-4 px-4">
+                    <div className="rounded-2xl bg-emerald-50 border-2 border-emerald-200 px-4 py-3 flex items-center gap-3">
+                        <span className="text-2xl">🔗</span>
+                        <p className="text-xs text-emerald-700 font-bold leading-relaxed flex-1">
+                            這是其他老師分享給你的班級（唯讀）。<br />
+                            你可以查看名單、玩練習、看自己的戰績，但無法編輯名單或上傳照片。
+                        </p>
+                    </div>
+                </div>
+            )}
             <div className="flex items-center justify-between w-full max-w-4xl mb-12 px-4">
                 <button onClick={onBack} className="btn-icon-back">
                     <ArrowLeft className="w-8 h-8" />
@@ -1036,9 +1151,11 @@ const StudentManager = ({ cls, userId, onBack, onStartGame }) => {
                         <h2 className="text-4xl font-black text-indigo-950">{cls.name}</h2>
                         <p className="text-indigo-400 font-black uppercase text-[10px] tracking-[0.4em] mt-2">Active Students: {students.length}</p>
                     </div>
-                    <button onClick={handleExportBackup} className="btn-glass-pill flex items-center gap-2 text-indigo-600 hover:scale-105 transition-transform text-sm px-4 py-1">
-                        <Download className="w-4 h-4" /> <span className="font-bold">匯出班級備份</span>
-                    </button>
+                    {!isShared && (
+                        <button onClick={handleExportBackup} className="btn-glass-pill flex items-center gap-2 text-indigo-600 hover:scale-105 transition-transform text-sm px-4 py-1">
+                            <Download className="w-4 h-4" /> <span className="font-bold">匯出班級備份</span>
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -1134,6 +1251,7 @@ const StudentManager = ({ cls, userId, onBack, onStartGame }) => {
                 </div>
             </motion.div>
 
+            {!isShared && (
             <div className="flex flex-col md:flex-row gap-8 w-full max-w-5xl mb-24 px-4">
                 <div className="clay-card clay-card-create flex-1 p-8 md:p-12 relative overflow-hidden text-white">
                     {/* Decorative Background */}
@@ -1464,6 +1582,7 @@ const StudentManager = ({ cls, userId, onBack, onStartGame }) => {
                     )}
                 </div>
             </div>
+            )}
 
 
             <div ref={studentListRef} className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-6 w-full max-w-7xl px-4 pb-20">
@@ -1471,7 +1590,8 @@ const StudentManager = ({ cls, userId, onBack, onStartGame }) => {
                     <StudentCard
                         key={student.id}
                         student={student}
-                        onEdit={() => setEditingTagsStudent(student)}
+                        readOnly={isShared}
+                        onEdit={() => !isShared && setEditingTagsStudent(student)}
                         onDelete={(id) => handleDeleteStudent(id, student.name)}
                         onLongPress={(std) => setPreviewingStudent(std)}
                     />
@@ -1724,13 +1844,13 @@ const StudentManager = ({ cls, userId, onBack, onStartGame }) => {
     );
 };
 
-const StudentCard = ({ student, onEdit, onDelete, onLongPress }) => {
+const StudentCard = ({ student, onEdit, onDelete, onLongPress, readOnly = false }) => {
     const photoSrc = useCachedPhoto(student.id, student.photoUrl);
 
-    // 整合長按交互
+    // 整合長按交互（唯讀模式下點擊也只開預覽，不進編輯）
     const longPressProps = useLongPress(
         () => onLongPress(student),
-        () => onEdit(),
+        () => readOnly ? onLongPress(student) : onEdit(),
         { delay: 450 }
     );
 
@@ -1745,16 +1865,18 @@ const StudentCard = ({ student, onEdit, onDelete, onLongPress }) => {
             {/* Card Container - Pro Max Premium */}
             <div className="w-full aspect-[3/4] clay-card p-0 overflow-hidden relative border-4 border-white group-hover:border-indigo-200 shadow-clay-card group-hover:shadow-indigo-500/30 transition-all duration-300 rounded-[32px] bg-white/80 backdrop-blur-xl">
 
-                {/* Action Buttons (Compact) */}
-                <div className="absolute top-2 right-2 flex flex-col gap-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    <button
-                        onClick={(e) => { e.stopPropagation(); onDelete(student.id); }}
-                        className="btn-square-danger shadow-lg hover:scale-110 transition-transform bg-white/90 backdrop-blur-md"
-                        title="移除"
-                    >
-                        <Trash2 className="w-5 h-5" />
-                    </button>
-                </div>
+                {/* Action Buttons (Compact) — 唯讀模式不顯示 */}
+                {!readOnly && (
+                    <div className="absolute top-2 right-2 flex flex-col gap-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onDelete(student.id); }}
+                            className="btn-square-danger shadow-lg hover:scale-110 transition-transform bg-white/90 backdrop-blur-md"
+                            title="移除"
+                        >
+                            <Trash2 className="w-5 h-5" />
+                        </button>
+                    </div>
+                )}
 
                 {/* Photo Area */}
                 <div className="w-full h-full bg-gradient-to-br from-indigo-50 to-purple-50 relative group-hover:from-indigo-100 group-hover:to-purple-100 transition-colors duration-500">

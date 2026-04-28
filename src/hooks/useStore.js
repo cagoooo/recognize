@@ -11,11 +11,14 @@ import {
     doc,
     serverTimestamp,
     writeBatch,
-    orderBy
+    orderBy,
+    getDoc,
+    arrayRemove
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { compressImage } from '../lib/imageUtils';
 import { smartCropFace } from '../lib/faceCrop';
+import { generateShareToken } from '../lib/shareToken';
 import {
     getClasses,
     saveClasses,
@@ -25,6 +28,34 @@ import {
     getPhotoBlob,
     getOriginalPhotoBlob
 } from '../lib/db';
+
+/**
+ * 獨立工具：科任老師持分享連結加入班級
+ * 不在 hook 內，方便 App boot 時直接呼叫（不需先 useClasses）
+ */
+export const joinClassByShareLink = async (classId, token, userId) => {
+    if (!classId || !token) throw new Error('連結格式不正確');
+    if (!userId) throw new Error('尚未登入');
+    const ref = doc(db, 'classes', classId);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) throw new Error('班級不存在或連結已失效');
+    const data = snap.data();
+    if (data.shareToken !== token) throw new Error('連結已失效');
+    if (data.teacherUid === userId) {
+        return { classId, name: data.name, alreadyOwner: true };
+    }
+    const existing = Array.isArray(data.sharedWith) ? data.sharedWith : [];
+    if (existing.includes(userId)) {
+        return { classId, name: data.name, alreadyJoined: true };
+    }
+    await updateDoc(ref, {
+        sharedWith: [...existing, userId],
+        shareToken: data.shareToken,
+        name: data.name,
+        teacherUid: data.teacherUid,
+    });
+    return { classId, name: data.name };
+};
 
 /**
  * 上傳流程共用：壓縮 → 人臉裁切 → 上傳裁切版到 Storage → 雙存到 IndexedDB
@@ -99,22 +130,41 @@ export const useClasses = (userId) => {
         };
         loadCache();
 
-        // 2. Start Firestore Snapshot for real-time updates
-        const q = query(collection(db, 'classes'), where('teacherUid', '==', userId));
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            data.sort((a, b) => a.name.localeCompare(b.name, 'zh-TW', { numeric: true }));
-
+        // 2. Firestore 雙 query：自己擁有的 + 共享進來的
+        let ownedData = [];
+        let sharedData = [];
+        const merge = () => {
+            // 以 id 去重（理論上不會重，防呆）
+            const map = new Map();
+            ownedData.forEach(c => map.set(c.id, { ...c, _isShared: false }));
+            sharedData.forEach(c => {
+                if (!map.has(c.id)) map.set(c.id, { ...c, _isShared: true });
+            });
+            const data = Array.from(map.values())
+                .sort((a, b) => a.name.localeCompare(b.name, 'zh-TW', { numeric: true }));
             setClasses(data);
             setLoading(false);
-
-            // 3. 同步回 IndexedDB
             saveClasses(data, userId).catch(e => console.error("Save classes cache failed:", e));
+        };
+
+        const ownedQ = query(collection(db, 'classes'), where('teacherUid', '==', userId));
+        const sharedQ = query(collection(db, 'classes'), where('sharedWith', 'array-contains', userId));
+
+        const unsubOwned = onSnapshot(ownedQ, (snap) => {
+            ownedData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            merge();
         }, (error) => {
-            console.error("Classes snapshot error:", error);
+            console.error("Owned classes snapshot error:", error);
             setLoading(false);
         });
-        return () => unsubscribe();
+        const unsubShared = onSnapshot(sharedQ, (snap) => {
+            sharedData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            merge();
+        }, (error) => {
+            console.error("Shared classes snapshot error:", error);
+        });
+
+        return () => { unsubOwned(); unsubShared(); };
     }, [userId]);
 
     const addClass = (name) => {
@@ -129,7 +179,36 @@ export const useClasses = (userId) => {
         return deleteDoc(doc(db, 'classes', id));
     };
 
-    return { classes, loading, addClass, deleteClass };
+    /**
+     * 為班級產生（或重發）分享 token；同 token 多次呼叫會用新的覆蓋（撤銷舊連結）
+     * 僅班導本人可呼叫
+     */
+    const ensureShareToken = async (classId) => {
+        const ref = doc(db, 'classes', classId);
+        const snap = await getDoc(ref);
+        if (!snap.exists()) throw new Error('班級不存在');
+        const existing = snap.data().shareToken;
+        if (existing) return existing;
+        const token = generateShareToken();
+        await updateDoc(ref, { shareToken: token, sharedWith: snap.data().sharedWith || [] });
+        return token;
+    };
+
+    /** 重新產生 token（撤銷既有連結） */
+    const regenerateShareToken = async (classId) => {
+        const token = generateShareToken();
+        await updateDoc(doc(db, 'classes', classId), { shareToken: token });
+        return token;
+    };
+
+    /** 班導從共享名單移除某老師 */
+    const removeSharedTeacher = async (classId, uid) => {
+        await updateDoc(doc(db, 'classes', classId), { sharedWith: arrayRemove(uid) });
+    };
+
+    const joinClassByToken = (classId, token) => joinClassByShareLink(classId, token, userId);
+
+    return { classes, loading, addClass, deleteClass, ensureShareToken, regenerateShareToken, removeSharedTeacher, joinClassByToken };
 };
 
 export const useStudents = (classId) => {

@@ -1,4 +1,4 @@
-import { db } from '../firebase';
+import { db, auth } from '../firebase';
 import { addDoc, collection, serverTimestamp, writeBatch, doc, increment } from 'firebase/firestore';
 
 export const useRecognitionStats = () => {
@@ -11,10 +11,13 @@ export const useRecognitionStats = () => {
      */
     const recordGameResult = async (className, score, totalQuestions = 10, detailedResults = []) => {
         const accuracy = Math.min(100, (score / (totalQuestions * 100)) * 100);
+        const teacherUid = auth.currentUser?.uid;
+        if (!teacherUid) throw new Error('未登入，無法寫入戰績');
 
         try {
-            // 1. 寫入遊戲總分紀錄
+            // 1. 寫入遊戲總分紀錄（戰績完全獨立：每筆綁 teacherUid）
             const gameDocRef = await addDoc(collection(db, 'scores'), {
+                teacherUid,
                 className,
                 score,
                 accuracy,
