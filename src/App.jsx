@@ -887,6 +887,7 @@ const StudentManager = ({ cls, userId, onBack, onStartGame }) => {
     const isShared = !!cls._isShared; // 共享進來的班級 → 唯讀
     const { students, addStudent, batchAddStudents, updateStudentPhoto, deleteStudent, updateStudentTags, updateStudentDescription, recropStudentPhoto } = useStudents(cls.id);
     const [showInsightBook, setShowInsightBook] = useState(false);
+    const [batchCrop, setBatchCrop] = useState(null); // null | { phase, current, total, success, fallback, skipped, failed }
     const [newName, setNewName] = useState('');
     const [newSeatNumber, setNewSeatNumber] = useState('');
     const [photoFile, setPhotoFile] = useState(null);
@@ -1111,6 +1112,62 @@ const StudentManager = ({ cls, userId, onBack, onStartGame }) => {
         alert(`🎉 照片同步完成！\n✅ 流水號配對上傳：${successCount} 位${prematched > 0 ? `\n✅ 語意匹配上傳：${prematched} 位` : ''}`);
     };
 
+    /**
+     * 一鍵把全班照片重新跑人臉裁切
+     *  - 已標 cropMeta.method === 'face' 者跳過（避免重複壓榨）
+     *  - 失敗單一學生不阻斷整體，最後彙總成功 / fallback / skip / fail
+     */
+    const handleBatchRecrop = async () => {
+        const candidates = students.filter(s => s.photoUrl);
+        if (candidates.length === 0) {
+            alert('班級沒有任何照片可處理');
+            return;
+        }
+        const skipExisting = candidates.filter(s => s.cropMeta?.method === 'face');
+        const todo = candidates.filter(s => s.cropMeta?.method !== 'face');
+
+        if (todo.length === 0) {
+            alert('全班照片都已經做過人臉裁切，沒有需要處理的');
+            return;
+        }
+
+        const ok = confirm(
+            `準備對 ${todo.length} 位學生的照片重新跑人臉裁切。\n` +
+            (skipExisting.length > 0 ? `（已裁切過的 ${skipExisting.length} 位會自動跳過）\n` : '') +
+            `\n處理時間約每張 1-2 秒，過程中請保持頁面開啟。\n確定執行？`
+        );
+        if (!ok) return;
+
+        setBatchCrop({
+            phase: 'running',
+            current: 0,
+            total: todo.length,
+            success: 0,
+            fallback: 0,
+            skipped: skipExisting.length,
+            failed: 0,
+            currentName: '',
+        });
+
+        for (let i = 0; i < todo.length; i++) {
+            const student = todo[i];
+            setBatchCrop(prev => ({ ...prev, current: i + 1, currentName: student.name }));
+            try {
+                const result = await recropStudentPhoto(student.id, student.photoUrl);
+                setBatchCrop(prev => ({
+                    ...prev,
+                    success: prev.success + (result.cropMeta?.method === 'face' ? 1 : 0),
+                    fallback: prev.fallback + (result.cropMeta?.method !== 'face' ? 1 : 0),
+                }));
+            } catch (err) {
+                console.warn(`Recrop failed for ${student.name}:`, err);
+                setBatchCrop(prev => ({ ...prev, failed: prev.failed + 1 }));
+            }
+        }
+
+        setBatchCrop(prev => ({ ...prev, phase: 'done', currentName: '' }));
+    };
+
     const handleExportBackup = async () => {
         if (students.length === 0) {
             alert('班級沒有學生資料可供匯出。');
@@ -1192,6 +1249,20 @@ const StudentManager = ({ cls, userId, onBack, onStartGame }) => {
                     <Sparkles className="w-6 h-6 mr-2" />
                     攻略本
                 </motion.button>
+
+                {!isShared && (
+                    <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={handleBatchRecrop}
+                        disabled={students.length === 0 || !!batchCrop}
+                        className={`btn-clay bg-gradient-to-br from-emerald-500 to-teal-600 text-white px-8 py-5 text-xl flex items-center shadow-lg border-2 border-emerald-400 ${students.length === 0 || batchCrop ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        title="把全班照片用 AI 重新對齊人臉中央"
+                    >
+                        <span className="text-2xl mr-2">✂️</span>
+                        裁切全班
+                    </motion.button>
+                )}
             </div>
 
             {/* 搜尋 與 篩選 (New UI) */}
@@ -1838,6 +1909,78 @@ const StudentManager = ({ cls, userId, onBack, onStartGame }) => {
                         students={students}
                         onClose={() => setShowInsightBook(false)}
                     />
+                )}
+            </AnimatePresence>
+
+            {/* 批次裁切進度 Modal */}
+            <AnimatePresence>
+                {batchCrop && (
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4">
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            className="clay-card p-0 max-w-md w-full overflow-hidden shadow-2xl"
+                        >
+                            <div className="bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-500 text-white px-6 py-5 flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center text-2xl">✂️</div>
+                                <div>
+                                    <h2 className="text-xl font-black">
+                                        {batchCrop.phase === 'running' ? '批次裁切中...' : '批次裁切完成'}
+                                    </h2>
+                                    <p className="text-xs text-white/80 font-bold">
+                                        {batchCrop.phase === 'running'
+                                            ? `${batchCrop.current} / ${batchCrop.total}　${batchCrop.currentName ? '正在處理：' + batchCrop.currentName : ''}`
+                                            : '處理結果如下'}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="px-6 py-5 bg-slate-50/60">
+                                {/* 進度條 */}
+                                <div className="w-full bg-slate-200 rounded-full h-3 overflow-hidden mb-4">
+                                    <motion.div
+                                        className="h-full bg-gradient-to-r from-emerald-400 to-teal-500"
+                                        animate={{ width: `${(batchCrop.current / batchCrop.total) * 100}%` }}
+                                        transition={{ ease: 'easeOut' }}
+                                    />
+                                </div>
+
+                                {/* 統計 */}
+                                <div className="grid grid-cols-2 gap-3 mb-4">
+                                    <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2 text-center">
+                                        <div className="text-2xl font-black text-emerald-600">{batchCrop.success}</div>
+                                        <div className="text-[10px] text-emerald-700 font-bold uppercase tracking-wider">人臉裁切</div>
+                                    </div>
+                                    <div className="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-center">
+                                        <div className="text-2xl font-black text-amber-600">{batchCrop.fallback}</div>
+                                        <div className="text-[10px] text-amber-700 font-bold uppercase tracking-wider">中央兜底</div>
+                                    </div>
+                                    <div className="rounded-xl bg-slate-100 border border-slate-200 px-3 py-2 text-center">
+                                        <div className="text-2xl font-black text-slate-500">{batchCrop.skipped}</div>
+                                        <div className="text-[10px] text-slate-600 font-bold uppercase tracking-wider">跳過（已裁）</div>
+                                    </div>
+                                    <div className="rounded-xl bg-rose-50 border border-rose-200 px-3 py-2 text-center">
+                                        <div className="text-2xl font-black text-rose-500">{batchCrop.failed}</div>
+                                        <div className="text-[10px] text-rose-700 font-bold uppercase tracking-wider">失敗</div>
+                                    </div>
+                                </div>
+
+                                {batchCrop.phase === 'done' && (
+                                    <button
+                                        onClick={() => setBatchCrop(null)}
+                                        className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black shadow-md hover:scale-[1.02] transition-transform"
+                                    >
+                                        完成
+                                    </button>
+                                )}
+                                {batchCrop.phase === 'running' && (
+                                    <p className="text-center text-xs text-slate-400 font-bold">
+                                        請保持頁面開啟，處理中…
+                                    </p>
+                                )}
+                            </div>
+                        </motion.div>
+                    </div>
                 )}
             </AnimatePresence>
         </motion.div >
