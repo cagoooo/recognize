@@ -281,7 +281,7 @@ const HeroSection = ({ onLogin }) => (
     <motion.div
         initial={{ y: 40, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="relative flex flex-col items-center pt-8 md:pt-12 pb-12 md:pb-20 text-center max-w-4xl mx-auto overflow-hidden md:overflow-visible px-4"
+        className="relative flex flex-col items-center pt-24 md:pt-28 pb-12 md:pb-20 text-center max-w-4xl mx-auto overflow-hidden md:overflow-visible px-4"
     >
         {/* Aurora Background Blobs */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full pointer-events-none z-0">

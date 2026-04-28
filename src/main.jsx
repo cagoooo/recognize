@@ -9,7 +9,7 @@ import App from './App.jsx'
  *  造成 fetch() 抓不到照片。這段在 boot 時偵測壞 SW，清掉就 reload 一次。
  *  跑過一次後寫入 localStorage 旗標避免無限 reload。
  */
-const SELF_HEAL_KEY = 'recognize_sw_heal_v391';
+const SELF_HEAL_KEY = 'recognize_sw_heal_v393';
 async function selfHealStaleSW() {
     if (localStorage.getItem(SELF_HEAL_KEY) === 'done') return;
     if (!('serviceWorker' in navigator) || !('caches' in window)) return;
