@@ -69,16 +69,17 @@ const StatsView = ({ userId, onBack }) => {
     }, [scores]);
 
     return (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center py-10 w-full px-4">
-            <div className="flex flex-col items-center gap-6 mb-10 w-full max-w-5xl">
-                <div className="flex items-center justify-between w-full">
-                    <button onClick={onBack} className="btn-icon-back">
-                        <ArrowLeft className="w-8 h-8" />
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center py-6 sm:py-10 w-full px-3 sm:px-4">
+            <div className="flex flex-col items-center gap-4 sm:gap-6 mb-6 sm:mb-10 w-full max-w-5xl">
+                <div className="flex items-center justify-between w-full gap-3">
+                    <button onClick={onBack} className="btn-icon-back flex-shrink-0">
+                        <ArrowLeft className="w-6 h-6 sm:w-8 sm:h-8" />
                     </button>
-                    <div className="text-right">
-                        <h2 className="text-3xl font-black text-indigo-950">戰績進化中樞</h2>
-                        <p className="text-indigo-400 font-bold italic text-sm mt-1">
-                            <Heart className="w-4 h-4 inline-block mr-1 fill-rose-500 text-rose-500" /> 用心記住，成就非凡
+                    <div className="text-right min-w-0 flex-1">
+                        <h2 className="text-xl sm:text-3xl font-black text-indigo-950 truncate">戰績進化中樞</h2>
+                        <p className="text-indigo-400 font-bold italic text-[11px] sm:text-sm mt-1 truncate flex items-center justify-end gap-1">
+                            <Heart className="w-3 h-3 sm:w-4 sm:h-4 fill-rose-500 text-rose-500 flex-shrink-0" />
+                            <span className="truncate">用心記住，成就非凡</span>
                         </p>
                     </div>
                 </div>
@@ -108,21 +109,21 @@ const StatsView = ({ userId, onBack }) => {
 
             {selectedClass ? (
                 <>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full max-w-5xl mb-8">
-                        <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} className="clay-card p-8 flex flex-col items-center border-emerald-50">
-                            <div className="w-12 h-12 bg-emerald-100 rounded-2xl flex items-center justify-center mb-4 text-emerald-600"><TrendingUp /></div>
-                            <p className="text-xs font-black text-emerald-400 uppercase tracking-widest mb-1">平均得分</p>
-                            <p className="text-3xl font-black text-indigo-950">{stats.avg}</p>
+                    <div className="grid grid-cols-3 gap-3 sm:gap-6 w-full max-w-5xl mb-6 sm:mb-8">
+                        <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} className="clay-card !p-4 sm:!p-8 flex flex-col items-center border-emerald-50">
+                            <div className="w-9 h-9 sm:w-12 sm:h-12 bg-emerald-100 rounded-xl sm:rounded-2xl flex items-center justify-center mb-2 sm:mb-4 text-emerald-600"><TrendingUp className="w-5 h-5 sm:w-6 sm:h-6" /></div>
+                            <p className="text-[9px] sm:text-xs font-black text-emerald-400 uppercase tracking-widest mb-1">平均</p>
+                            <p className="text-xl sm:text-3xl font-black text-indigo-950">{stats.avg}</p>
                         </motion.div>
-                        <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }} className="clay-card p-8 flex flex-col items-center border-orange-50">
-                            <div className="w-12 h-12 bg-orange-100 rounded-2xl flex items-center justify-center mb-4 text-orange-500"><Zap fill="currentColor" /></div>
-                            <p className="text-xs font-black text-orange-400 uppercase tracking-widest mb-1">巔峰戰力</p>
-                            <p className="text-3xl font-black text-indigo-950">{stats.max}</p>
+                        <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }} className="clay-card !p-4 sm:!p-8 flex flex-col items-center border-orange-50">
+                            <div className="w-9 h-9 sm:w-12 sm:h-12 bg-orange-100 rounded-xl sm:rounded-2xl flex items-center justify-center mb-2 sm:mb-4 text-orange-500"><Zap fill="currentColor" className="w-5 h-5 sm:w-6 sm:h-6" /></div>
+                            <p className="text-[9px] sm:text-xs font-black text-orange-400 uppercase tracking-widest mb-1">巔峰</p>
+                            <p className="text-xl sm:text-3xl font-black text-indigo-950">{stats.max}</p>
                         </motion.div>
-                        <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }} className="clay-card p-8 flex flex-col items-center border-purple-50">
-                            <div className="w-12 h-12 bg-purple-100 rounded-2xl flex items-center justify-center mb-4 text-purple-600"><Calendar /></div>
-                            <p className="text-xs font-black text-purple-400 uppercase tracking-widest mb-1">累計場次</p>
-                            <p className="text-3xl font-black text-indigo-950">{stats.total}</p>
+                        <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }} className="clay-card !p-4 sm:!p-8 flex flex-col items-center border-purple-50">
+                            <div className="w-9 h-9 sm:w-12 sm:h-12 bg-purple-100 rounded-xl sm:rounded-2xl flex items-center justify-center mb-2 sm:mb-4 text-purple-600"><Calendar className="w-5 h-5 sm:w-6 sm:h-6" /></div>
+                            <p className="text-[9px] sm:text-xs font-black text-purple-400 uppercase tracking-widest mb-1">場次</p>
+                            <p className="text-xl sm:text-3xl font-black text-indigo-950">{stats.total}</p>
                         </motion.div>
                     </div>
 

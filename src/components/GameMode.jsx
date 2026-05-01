@@ -197,34 +197,34 @@ const GameMode = ({ targetStudents, allStudents, className, onBack, gameMode = '
 
     if (gameFinished) {
         return (
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="flex flex-col items-center py-10 w-full">
-                <div className="clay-card max-w-lg p-14 flex flex-col items-center relative overflow-hidden">
-                    <div className="relative mb-12">
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="flex flex-col items-center pt-20 sm:pt-10 pb-10 w-full px-3 sm:px-4">
+                <div className="clay-card max-w-lg !p-7 sm:!p-14 flex flex-col items-center relative overflow-hidden w-full">
+                    <div className="relative mb-7 sm:mb-12">
                         <div className="absolute inset-0 bg-yellow-400/20 blur-[80px]" />
-                        <div className="relative w-32 h-32 bg-yellow-100 rounded-[45px] flex items-center justify-center shadow-inner">
-                            <Trophy className="w-16 h-16 text-yellow-600" />
+                        <div className="relative w-24 h-24 sm:w-32 sm:h-32 bg-yellow-100 rounded-[36px] sm:rounded-[45px] flex items-center justify-center shadow-inner">
+                            <Trophy className="w-12 h-12 sm:w-16 sm:h-16 text-yellow-600" />
                         </div>
                     </div>
-                    <h2 className="text-4xl font-black text-indigo-950 mb-4">特訓圓滿達成！</h2>
-                    <p className="text-indigo-400 font-bold mb-10 italic">您的記憶直覺已提升至全新境界</p>
-                    <div className="grid grid-cols-2 gap-6 w-full mb-10">
-                        <div className="bg-white/50 backdrop-blur-md p-6 rounded-[32px] border-4 border-white shadow-xl">
-                            <p className="text-[10px] font-black text-indigo-300 uppercase tracking-widest mb-1">本次得分</p>
-                            <p className="text-4xl font-black text-indigo-950">{score}</p>
+                    <h2 className="text-2xl sm:text-4xl font-black text-indigo-950 mb-3 sm:mb-4 text-center">特訓圓滿達成！</h2>
+                    <p className="text-indigo-400 font-bold mb-6 sm:mb-10 italic text-sm sm:text-base text-center">您的記憶直覺已提升至全新境界</p>
+                    <div className="grid grid-cols-2 gap-3 sm:gap-6 w-full mb-6 sm:mb-10">
+                        <div className="bg-white/50 backdrop-blur-md p-4 sm:p-6 rounded-2xl sm:rounded-[32px] border-4 border-white shadow-xl">
+                            <p className="text-[9px] sm:text-[10px] font-black text-indigo-300 uppercase tracking-widest mb-1">本次得分</p>
+                            <p className="text-2xl sm:text-4xl font-black text-indigo-950">{score}</p>
                         </div>
-                        <div className="bg-indigo-600/10 backdrop-blur-md p-6 rounded-[32px] border-4 border-indigo-100/50 shadow-xl">
-                            <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">最高連擊</p>
-                            <p className="text-4xl font-black text-indigo-600 flex items-center gap-2">
-                                {maxCombo} <span className="text-lg">x</span>
+                        <div className="bg-indigo-600/10 backdrop-blur-md p-4 sm:p-6 rounded-2xl sm:rounded-[32px] border-4 border-indigo-100/50 shadow-xl">
+                            <p className="text-[9px] sm:text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">最高連擊</p>
+                            <p className="text-2xl sm:text-4xl font-black text-indigo-600 flex items-center gap-2">
+                                {maxCombo} <span className="text-base sm:text-lg">x</span>
                             </p>
                         </div>
                     </div>
-                    <div className="flex gap-4 w-full">
-                        <button onClick={onBack} className="btn-clay btn-clay-primary flex-1 py-6 text-xl">
+                    <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full">
+                        <button onClick={onBack} className="btn-clay btn-clay-primary flex-1 !py-4 sm:!py-6 text-base sm:text-xl">
                             返回總部基地
                         </button>
-                        <button onClick={() => setShowShareCard(true)} className="btn-clay bg-indigo-50 text-indigo-600 flex-1 py-6 text-xl flex items-center justify-center gap-2">
-                            <Share2 className="w-6 h-6" /> 分享
+                        <button onClick={() => setShowShareCard(true)} className="btn-clay bg-indigo-50 text-indigo-600 flex-1 !py-4 sm:!py-6 text-base sm:text-xl flex items-center justify-center gap-2">
+                            <Share2 className="w-5 h-5 sm:w-6 sm:h-6" /> 分享
                         </button>
                     </div>
 
@@ -242,12 +242,12 @@ const GameMode = ({ targetStudents, allStudents, className, onBack, gameMode = '
     }
 
     return (
-        <div className="flex flex-col items-center pt-32 md:pt-40 pb-6 w-full">
-            <div className="flex flex-wrap items-center justify-between w-full max-w-4xl mb-8 md:mb-12 px-2 md:px-4 gap-y-4">
-                <button onClick={onBack} className="btn-icon-back">
-                    <ArrowLeft className="w-6 h-6 md:w-8 md:h-8" />
+        <div className="flex flex-col items-center pt-20 sm:pt-32 md:pt-40 pb-6 w-full">
+            <div className="flex flex-wrap items-center justify-between w-full max-w-4xl mb-5 sm:mb-8 md:mb-12 px-3 md:px-4 gap-y-3 gap-x-2">
+                <button onClick={onBack} className="btn-icon-back flex-shrink-0">
+                    <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8" />
                 </button>
-                <div className="flex items-center gap-2 md:gap-3">
+                <div className="flex items-center gap-2 md:gap-3 flex-wrap justify-end">
                     <div className="stats-pill">
                         <Timer className="w-5 h-5 text-indigo-400" />
                         <span className="text-xs md:text-sm">掌握度 {solvedCount} <span className="text-slate-300">/ {targetStudents.length}</span></span>
@@ -315,15 +315,15 @@ const GameMode = ({ targetStudents, allStudents, className, onBack, gameMode = '
                     </AnimatePresence>
                 </motion.div>
 
-                <div className="text-center mb-6 md:mb-8">
-                    <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-rose-50 rounded-full mb-4">
+                <div className="text-center mb-4 sm:mb-6 md:mb-8">
+                    <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-rose-50 rounded-full mb-3 sm:mb-4">
                         <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500 animate-pulse" />
                         <span className="text-[9px] font-black text-rose-400 uppercase tracking-widest">Question Mastery</span>
                     </div>
-                    <h3 className="text-xl md:text-2xl font-black text-indigo-950 mb-2 px-4 flex items-center justify-center gap-2 md:gap-3">
-                        {gameMode === 'reverse' ? '請點選對應的照片選項：' : '這位學生的姓名是？'}
-                        <button onClick={() => speak(currentQuestion.name)} className="p-2 rounded-full bg-indigo-50 hover:bg-indigo-100 text-indigo-400 transition-colors">
-                            <Volume2 className="w-5 h-5" />
+                    <h3 className="text-base sm:text-xl md:text-2xl font-black text-indigo-950 mb-2 px-3 sm:px-4 flex items-center justify-center gap-2 md:gap-3">
+                        {gameMode === 'reverse' ? '請點選對應的照片：' : '這位學生的姓名是？'}
+                        <button onClick={() => speak(currentQuestion.name)} className="p-1.5 sm:p-2 rounded-full bg-indigo-50 hover:bg-indigo-100 text-indigo-400 transition-colors flex-shrink-0">
+                            <Volume2 className="w-4 h-4 sm:w-5 sm:h-5" />
                         </button>
                     </h3>
 
@@ -394,7 +394,7 @@ const GameMode = ({ targetStudents, allStudents, className, onBack, gameMode = '
                     <p className="text-indigo-400 font-bold uppercase tracking-[0.2em] text-[10px] mt-4 md:mt-6">{gameMode === 'reverse' ? 'SELECT THE MATCHING PHOTO' : 'TAP THE CORRECT IDENTITY'}</p>
                 </div>
 
-                <div className={`w-full px-4 ${gameMode === 'reverse' ? 'grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4' : 'game-option-grid'}`}>
+                <div className={`w-full px-3 sm:px-4 ${gameMode === 'reverse' ? 'grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3 md:gap-4' : 'game-option-grid'}`}>
                     {options.map((opt, idx) => (
                         <motion.button
                             key={`${opt.id}-${idx}`}

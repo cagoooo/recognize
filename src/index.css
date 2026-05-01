@@ -546,13 +546,15 @@ body {
 @media (max-width: 640px) {
   .user-dropdown-card {
     position: fixed;
-    top: 80px;
+    top: 70px;
     left: 50%;
     transform: translateX(-50%) !important;
     /* Force center on mobile */
     right: auto;
-    width: 90%;
-    max-width: 360px;
+    width: calc(100% - 24px);
+    max-width: 340px;
+    max-height: calc(100dvh - 90px);
+    overflow-y: auto;
   }
 }
 
@@ -873,18 +875,164 @@ body {
 
 @media (max-width: 640px) {
   .nav-capsule {
-    padding: 10px 10px 10px 24px;
-    gap: 16px;
+    padding: 8px 8px 8px 18px;
+    gap: 12px;
+    border-width: 3px;
   }
 
   .clay-card {
-    padding: 32px;
-    border-radius: 40px;
+    padding: 22px;
+    border-radius: 32px;
+    border-width: 3px;
   }
 
   .brand-logo-clay {
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
+    border-radius: 14px;
+  }
+
+  /* 縮小 user dropdown 觸發按鈕：避免膠囊過厚 */
+  .user-avatar-trigger {
+    width: 42px;
+    height: 42px;
+    border-width: 3px;
+  }
+
+  /* 大圖示卡片裡的小框框：避免過大占空間 */
+  .card-icon-box {
+    width: 64px;
+    height: 64px;
+    border-radius: 22px;
+    margin-bottom: 16px;
+  }
+
+  /* 主要按鈕：手機上文字+padding 更緊湊 */
+  .btn-clay {
+    padding: 14px 24px;
+    border-radius: 24px;
+    letter-spacing: 0.5px;
+    gap: 8px;
+  }
+
+  /* 返回按鈕：手機上縮成 48px 維持點擊舒適度 */
+  .btn-icon-back {
+    width: 48px;
+    height: 48px;
+    border-radius: 16px;
+    border-width: 3px;
+  }
+
+  /* 上傳卡片：減少手機 padding */
+  .clay-upload-card {
+    padding: 16px;
+    gap: 14px;
+    border-width: 3px;
+  }
+
+  .clay-upload-card .icon-box {
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+  }
+
+  /* 玻璃膠囊按鈕：手機上字級+間距更精簡 */
+  .btn-glass-pill {
+    padding: 8px 14px;
+    font-size: 0.78rem;
+    gap: 6px;
+  }
+
+  /* clay-pill 標籤膠囊：手機上瘦身 */
+  .clay-pill {
+    padding: 8px 14px;
+    border-radius: 14px;
+    font-size: 0.85rem;
+    gap: 6px;
+  }
+
+  /* 詳情/編輯彈窗的下拉介面：避免被 header 壓到 */
+  .user-dropdown-card {
+    padding: 18px;
+    border-radius: 28px;
+  }
+
+  /* 遊戲選項：手機 6 vs PC 8 */
+  .game-btn-clay {
+    height: 64px;
+    border-radius: 22px;
+    font-size: 1.15rem;
+    border-width: 3px;
+  }
+
+  .game-option-grid {
+    gap: 12px;
+    padding: 4px;
+  }
+}
+
+/* iPhone Pro / 小螢幕 (≤ 380px) 的進階瘦身 */
+@media (max-width: 380px) {
+  .nav-capsule {
+    padding: 6px 8px 6px 14px;
+    gap: 8px;
+  }
+
+  .nav-capsule h1 {
+    font-size: 1.05rem;
+  }
+
+  .clay-card {
+    padding: 18px;
+    border-radius: 28px;
+  }
+
+  .btn-clay {
+    padding: 12px 20px;
+    font-size: 0.9rem;
+  }
+
+  .game-btn-clay {
+    height: 58px;
+    font-size: 1rem;
+  }
+}
+
+/* 安全區域（瀏海 / Home Indicator）— 全域底部保留 */
+@supports (padding: max(0px)) {
+  body {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .safe-area-pt {
+    padding-top: max(env(safe-area-inset-top), 16px);
+  }
+
+  .safe-area-pb {
+    padding-bottom: max(env(safe-area-inset-bottom), 16px);
+  }
+}
+
+/* 防止觸控長按彈出系統選單 / 圖片儲存 */
+.no-touch-callout {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* 平滑捲動 + 隱藏觸控反白色 */
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* 按鈕最小可點擊區（行動端 a11y）— Apple HIG 建議 44x44 */
+@media (hover: none) and (pointer: coarse) {
+  button:not(:disabled),
+  a[role="button"],
+  label[role="button"],
+  [role="button"] {
+    min-height: 40px;
   }
 }
 

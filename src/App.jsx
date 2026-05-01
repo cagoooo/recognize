@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import * as XLSX from 'xlsx';
 import { auth, db, googleProvider } from './firebase';
 import { useAuth } from './hooks/useAuth';
@@ -63,21 +63,44 @@ const App = () => {
     // --- Header Idle Logic ---
     const [isHeaderActive, setIsHeaderActive] = useState(true);
     const headerTimeoutRef = useRef(null);
+    const HEADER_IDLE_MS = 6000; // 6 秒閒置才淡出（原 3 秒太短）
 
-    const resetHeaderTimer = () => {
+    const resetHeaderTimer = useCallback(() => {
         setIsHeaderActive(true);
         if (headerTimeoutRef.current) clearTimeout(headerTimeoutRef.current);
         headerTimeoutRef.current = setTimeout(() => {
             setIsHeaderActive(false);
-        }, 3000); // 3 seconds idle
-    };
+        }, HEADER_IDLE_MS);
+    }, []);
 
+    // 初始化 + 切換頁面時自動重置（避免從遊戲畫面退回時看不到登出）
     useEffect(() => {
         resetHeaderTimer();
         return () => {
             if (headerTimeoutRef.current) clearTimeout(headerTimeoutRef.current);
         };
-    }, []);
+    }, [activeView, resetHeaderTimer]);
+
+    // 使用者任何互動（點擊 / 觸控 / 捲動）→ 重置計時器
+    useEffect(() => {
+        const handler = () => resetHeaderTimer();
+        // passive: true 不阻擋原本捲動，scroll 用 throttle 避免高頻觸發
+        let scrollPending = false;
+        const onScroll = () => {
+            if (scrollPending) return;
+            scrollPending = true;
+            requestAnimationFrame(() => {
+                resetHeaderTimer();
+                scrollPending = false;
+            });
+        };
+        window.addEventListener('pointerdown', handler, { passive: true });
+        window.addEventListener('scroll', onScroll, { passive: true });
+        return () => {
+            window.removeEventListener('pointerdown', handler);
+            window.removeEventListener('scroll', onScroll);
+        };
+    }, [resetHeaderTimer]);
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -197,7 +220,7 @@ const App = () => {
             </div>
 
             <header
-                className="fixed top-6 left-0 right-0 w-full px-4 flex justify-center pointer-events-none transition-all duration-1000"
+                className="fixed top-3 sm:top-6 left-0 right-0 w-full px-3 sm:px-4 flex justify-center pointer-events-none transition-all duration-1000 safe-area-pt"
                 style={{
                     zIndex: 99999,
                     opacity: isHeaderActive ? 1 : 0.2,
@@ -221,8 +244,8 @@ const App = () => {
                             <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
                         <div className="flex flex-col items-start leading-none">
-                            <h1 className="text-xl font-black text-indigo-950 tracking-tight">識生學坊</h1>
-                            <span className="text-[9px] uppercase tracking-[0.2em] text-indigo-500 font-bold opacity-80">Teacher Intelligence</span>
+                            <h1 className="text-lg sm:text-xl font-black text-indigo-950 tracking-tight">識生學坊</h1>
+                            <span className="hidden sm:inline text-[9px] uppercase tracking-[0.2em] text-indigo-500 font-bold opacity-80">Teacher Intelligence</span>
                         </div>
                     </motion.div>
 
@@ -292,9 +315,9 @@ const App = () => {
                 </div>
             </header>
 
-            <main className="w-full max-w-5xl px-4 flex flex-col items-stretch relative z-10 pt-28 md:pt-32 pb-20 min-h-screen">
+            <main className="w-full max-w-5xl px-3 sm:px-4 flex flex-col items-stretch relative z-10 pt-20 sm:pt-28 md:pt-32 pb-16 sm:pb-20 min-h-screen safe-area-pb">
                 {/* Spacer for Fixed Header (mobile only) */}
-                <div className="w-full h-8 md:hidden" />
+                <div className="w-full h-4 sm:h-8 md:hidden" />
                 {/* 撐滿剩餘視窗 + 垂直置中內容 */}
                 <div className="flex-1 w-full flex flex-col items-center justify-center">
                     <AnimatePresence mode="wait">
@@ -398,53 +421,53 @@ const HeroSection = ({ onLogin }) => (
 );
 
 const Dashboard = ({ onNavigate }) => (
-    <div className="flex flex-col items-center gap-10 md:gap-14 w-full">
+    <div className="flex flex-col items-center gap-6 sm:gap-10 md:gap-14 w-full">
         <motion.div
             whileHover={{ y: -12, scale: 1.01 }}
             onClick={() => onNavigate('play')}
-            className="clay-card clay-card-challenge border-none flex flex-col items-center cursor-pointer group max-w-md w-full mx-auto relative overflow-hidden"
+            className="clay-card clay-card-challenge border-none flex flex-col items-center cursor-pointer group max-w-md w-full mx-auto relative overflow-hidden !p-7 sm:!p-12"
         >
             <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 mix-blend-overlay pointer-events-none" />
             <div className="relative z-10 flex flex-col items-center w-full">
                 <div className="card-icon-box bg-white/20 backdrop-blur-md border-4 border-white/20 shadow-lg group-hover:scale-110 group-hover:rotate-12 transition-transform duration-500">
-                    <Target className="text-white w-12 h-12 drop-shadow-md" />
+                    <Target className="text-white w-9 h-9 sm:w-12 sm:h-12 drop-shadow-md" />
                 </div>
-                <h3 className="text-5xl font-black text-white mb-2 drop-shadow-lg tracking-tight">挑戰辨認</h3>
-                <div className="h-1 w-24 bg-white/30 rounded-full mb-4 group-hover:w-32 transition-all duration-500" />
-                <p className="text-indigo-100 font-bold mb-10 text-lg opacity-90 tracking-wider">高強度視覺訓練</p>
+                <h3 className="text-3xl sm:text-5xl font-black text-white mb-2 drop-shadow-lg tracking-tight">挑戰辨認</h3>
+                <div className="h-1 w-20 sm:w-24 bg-white/30 rounded-full mb-3 sm:mb-4 group-hover:w-32 transition-all duration-500" />
+                <p className="text-indigo-100 font-bold mb-6 sm:mb-10 text-sm sm:text-lg opacity-90 tracking-wider">高強度視覺訓練</p>
 
-                <button className="bg-white text-indigo-700 px-14 py-6 rounded-[32px] font-black text-xl shadow-2xl flex items-center gap-3 group-hover:bg-indigo-50 transition-all group-hover:scale-105 group-hover:shadow-[0_0_40px_rgba(255,255,255,0.6)] relative overflow-hidden">
+                <button className="bg-white text-indigo-700 px-8 sm:px-14 py-4 sm:py-6 rounded-[24px] sm:rounded-[32px] font-black text-base sm:text-xl shadow-2xl flex items-center gap-3 group-hover:bg-indigo-50 transition-all group-hover:scale-105 group-hover:shadow-[0_0_40px_rgba(255,255,255,0.6)] relative overflow-hidden">
                     <span className="relative z-10 flex items-center gap-2">
-                        立即啟動 <ChevronRight className="w-6 h-6 animate-bounce-x" />
+                        立即啟動 <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6 animate-bounce-x" />
                     </span>
                     <div className="absolute inset-0 bg-gradient-to-r from-indigo-50 via-white to-indigo-50 opacity-0 group-hover:opacity-50 transition-opacity" />
                 </button>
             </div>
         </motion.div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-10 w-full max-w-3xl">
+        <div className="grid grid-cols-2 gap-4 sm:gap-10 w-full max-w-3xl">
             <motion.div
                 whileHover={{ y: -8, scale: 1.02 }}
                 onClick={() => onNavigate('manage')}
-                className="clay-card clay-card-emerald p-12 flex flex-col items-center cursor-pointer group glow-emerald max-w-sm w-full mx-auto"
+                className="clay-card clay-card-emerald !p-5 sm:!p-12 flex flex-col items-center cursor-pointer group glow-emerald max-w-sm w-full mx-auto"
             >
                 <div className="card-icon-box bg-emerald-50 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white border-4 border-emerald-50">
-                    <Users className="w-8 h-8" />
+                    <Users className="w-6 h-6 sm:w-8 sm:h-8" />
                 </div>
-                <h3 className="text-2xl font-black text-indigo-950">班級編制</h3>
-                <p className="text-slate-400 text-sm font-bold mt-3">建立您的黃金名單</p>
+                <h3 className="text-base sm:text-2xl font-black text-indigo-950 text-center">班級編制</h3>
+                <p className="hidden sm:block text-slate-400 text-sm font-bold mt-3">建立您的黃金名單</p>
             </motion.div>
 
             <motion.div
                 whileHover={{ y: -8, scale: 1.02 }}
                 onClick={() => onNavigate('stats')}
-                className="clay-card clay-card-orange p-12 flex flex-col items-center cursor-pointer group glow-orange max-w-sm w-full mx-auto"
+                className="clay-card clay-card-orange !p-5 sm:!p-12 flex flex-col items-center cursor-pointer group glow-orange max-w-sm w-full mx-auto"
             >
                 <div className="card-icon-box bg-orange-50 text-orange-500 group-hover:bg-orange-500 group-hover:text-white border-4 border-orange-50">
-                    <Trophy className="w-8 h-8" />
+                    <Trophy className="w-6 h-6 sm:w-8 sm:h-8" />
                 </div>
-                <h3 className="text-2xl font-black text-indigo-950">成長戰績</h3>
-                <p className="text-slate-400 text-sm font-bold mt-3">追蹤進步曲線</p>
+                <h3 className="text-base sm:text-2xl font-black text-indigo-950 text-center">成長戰績</h3>
+                <p className="hidden sm:block text-slate-400 text-sm font-bold mt-3">追蹤進步曲線</p>
             </motion.div>
         </div>
     </div>
@@ -559,20 +582,20 @@ const ClassManager = ({ userId, onBack, onStartGame, onNavigate, mode = 'manage'
     }
 
     return (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-7xl px-4 mx-auto">
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-7xl px-3 sm:px-4 mx-auto">
             {/* Header Area */}
-            <div className="flex justify-between items-center mb-6">
-                <button onClick={onBack} className="btn-icon-back !w-12 !h-12 !rounded-2xl shadow-sm">
-                    <ArrowLeft className="w-6 h-6" />
+            <div className="flex justify-between items-center mb-4 sm:mb-6 gap-3">
+                <button onClick={onBack} className="btn-icon-back !w-12 !h-12 !rounded-2xl shadow-sm flex-shrink-0">
+                    <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6" />
                 </button>
-                <h2 className="text-3xl font-black text-indigo-950 flex items-center gap-3">
-                    <Users className="w-8 h-8 text-indigo-500" />
-                    班級編制中心
+                <h2 className="text-xl sm:text-3xl font-black text-indigo-950 flex items-center gap-2 sm:gap-3 min-w-0">
+                    <Users className="w-6 h-6 sm:w-8 sm:h-8 text-indigo-500 flex-shrink-0" />
+                    <span className="truncate">班級編制中心</span>
                 </h2>
-                <div className="w-12" /> {/* Spacer */}
+                <div className="w-12 flex-shrink-0" /> {/* Spacer */}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-5 sm:gap-8 items-start">
                 {/* Left Sidebar: Create & Import */}
                 <div className="lg:col-span-1 space-y-6">
                     <div className="clay-card clay-card-indigo p-6 text-white border-white/20 relative overflow-hidden">
@@ -835,38 +858,38 @@ const QuickStart = ({ cls, onBack, onStartGame, onNavigate }) => {
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex flex-col items-center py-10 w-full max-w-2xl mx-auto px-4"
+            className="flex flex-col items-center py-6 sm:py-10 w-full max-w-2xl mx-auto px-3 sm:px-4"
         >
-            <div className="clay-card w-full p-8 md:p-12">
-                <div className="flex items-center gap-4 mb-8">
-                    <button onClick={onBack} className="p-3 bg-slate-100 rounded-2xl hover:bg-slate-200 transition-colors">
+            <div className="clay-card w-full !p-5 sm:!p-8 md:!p-12">
+                <div className="flex items-center gap-3 sm:gap-4 mb-6 sm:mb-8">
+                    <button onClick={onBack} className="p-2.5 sm:p-3 bg-slate-100 rounded-xl sm:rounded-2xl hover:bg-slate-200 transition-colors flex-shrink-0">
                         <ArrowLeft className="w-5 h-5 text-slate-600" />
                     </button>
-                    <div>
-                        <h3 className="text-2xl font-black text-indigo-950">選擇特訓模式</h3>
-                        <p className="text-indigo-400 font-bold text-sm">目標班級：{cls.name}</p>
+                    <div className="min-w-0">
+                        <h3 className="text-lg sm:text-2xl font-black text-indigo-950">選擇特訓模式</h3>
+                        <p className="text-indigo-400 font-bold text-xs sm:text-sm truncate">目標班級：{cls.name}</p>
                     </div>
                 </div>
 
-                <div className="flex flex-col gap-4 mb-10">
+                <div className="flex flex-col gap-3 sm:gap-4 mb-6 sm:mb-10">
                     {modes.map((m) => (
                         <button
                             key={m.id}
                             onClick={() => setSelectedMode(m.id)}
-                            className={`flex items-center gap-5 p-6 rounded-[32px] border-4 transition-all text-left ${selectedMode === m.id
+                            className={`flex items-center gap-3 sm:gap-5 p-4 sm:p-6 rounded-2xl sm:rounded-[32px] border-4 transition-all text-left ${selectedMode === m.id
                                 ? 'bg-indigo-50 border-indigo-200 shadow-xl'
                                 : 'bg-white border-transparent hover:border-slate-100 shadow-md'
                                 }`}
                         >
-                            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-lg ${m.color} text-white`}>
+                            <div className={`w-11 h-11 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl flex items-center justify-center shrink-0 shadow-lg ${m.color} text-white`}>
                                 {m.icon}
                             </div>
-                            <div className="flex-1">
-                                <p className={`font-black text-lg ${selectedMode === m.id ? 'text-indigo-950' : 'text-slate-700'}`}>{m.name}</p>
-                                <p className="text-sm font-bold text-slate-400">{m.desc}</p>
+                            <div className="flex-1 min-w-0">
+                                <p className={`font-black text-base sm:text-lg ${selectedMode === m.id ? 'text-indigo-950' : 'text-slate-700'}`}>{m.name}</p>
+                                <p className="text-xs sm:text-sm font-bold text-slate-400 leading-snug">{m.desc}</p>
                             </div>
-                            <div className={`w-6 h-6 rounded-full border-4 flex items-center justify-center ${selectedMode === m.id ? 'border-indigo-600 bg-indigo-600' : 'border-slate-200'}`}>
-                                {selectedMode === m.id && <div className="w-2 h-2 bg-white rounded-full" />}
+                            <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full border-4 flex items-center justify-center flex-shrink-0 ${selectedMode === m.id ? 'border-indigo-600 bg-indigo-600' : 'border-slate-200'}`}>
+                                {selectedMode === m.id && <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-white rounded-full" />}
                             </div>
                         </button>
                     ))}
@@ -874,9 +897,9 @@ const QuickStart = ({ cls, onBack, onStartGame, onNavigate }) => {
 
                 <button
                     onClick={() => onStartGame(students, students, selectedMode)}
-                    className="btn-clay btn-clay-primary w-full py-6 text-xl flex items-center justify-center gap-3"
+                    className="btn-clay btn-clay-primary w-full !py-4 sm:!py-6 text-base sm:text-xl flex items-center justify-center gap-3"
                 >
-                    <Trophy className="w-6 h-6" /> 啟動練習模式
+                    <Trophy className="w-5 h-5 sm:w-6 sm:h-6" /> 啟動練習模式
                 </button>
             </div>
         </motion.div>
@@ -1293,42 +1316,42 @@ const StudentManager = ({ cls, userId, onBack, onStartGame }) => {
                     </div>
                 </div>
             )}
-            <div className="flex items-center justify-between w-full max-w-4xl mb-12 px-4">
-                <button onClick={onBack} className="btn-icon-back">
-                    <ArrowLeft className="w-8 h-8" />
+            <div className="flex items-center justify-between w-full max-w-4xl mb-6 sm:mb-12 px-3 sm:px-4 gap-3">
+                <button onClick={onBack} className="btn-icon-back flex-shrink-0">
+                    <ArrowLeft className="w-6 h-6 sm:w-8 sm:h-8" />
                 </button>
-                <div className="flex flex-col items-end gap-3">
-                    <div className="text-right">
-                        <h2 className="text-4xl font-black text-indigo-950">{cls.name}</h2>
-                        <p className="text-indigo-400 font-black uppercase text-[10px] tracking-[0.4em] mt-2">Active Students: {students.length}</p>
+                <div className="flex flex-col items-end gap-2 sm:gap-3 min-w-0 flex-1">
+                    <div className="text-right min-w-0 w-full">
+                        <h2 className="text-2xl sm:text-4xl font-black text-indigo-950 truncate">{cls.name}</h2>
+                        <p className="text-indigo-400 font-black uppercase text-[9px] sm:text-[10px] tracking-[0.3em] sm:tracking-[0.4em] mt-1 sm:mt-2">Active Students: {students.length}</p>
                     </div>
                     {!isShared && (
-                        <button onClick={handleExportBackup} className="btn-glass-pill flex items-center gap-2 text-indigo-600 hover:scale-105 transition-transform text-sm px-4 py-1">
+                        <button onClick={handleExportBackup} className="btn-glass-pill flex items-center gap-2 text-indigo-600 hover:scale-105 transition-transform text-xs sm:text-sm px-3 sm:px-4 py-1">
                             <Download className="w-4 h-4" /> <span className="font-bold">匯出班級備份</span>
                         </button>
                     )}
                 </div>
             </div>
 
-            <div className="flex flex-wrap justify-center gap-4 mb-12 mx-auto">
+            <div className="flex flex-wrap justify-center gap-2 sm:gap-4 mb-8 sm:mb-12 mx-auto px-3">
                 <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => onStartGame(filteredStudents, students)}
                     disabled={filteredStudents.length < 1}
-                    className={`btn-clay btn-clay-orange px-10 py-5 text-xl flex items-center ${filteredStudents.length < 1 ? 'opacity-50 grayscale cursor-not-allowed shadow-none' : 'pulse-primary'}`}
+                    className={`btn-clay btn-clay-orange w-full sm:w-auto px-6 sm:px-10 py-4 sm:py-5 text-base sm:text-xl flex items-center justify-center ${filteredStudents.length < 1 ? 'opacity-50 grayscale cursor-not-allowed shadow-none' : 'pulse-primary'}`}
                 >
-                    <Gamepad2 className="w-6 h-6 mr-2" />
-                    {tagFilter === 'all' ? '啟動全班練習' : `啟動「${tagFilter}」特訓`}
+                    <Gamepad2 className="w-5 h-5 sm:w-6 sm:h-6 mr-2 flex-shrink-0" />
+                    <span className="truncate">{tagFilter === 'all' ? '啟動全班練習' : `啟動「${tagFilter}」特訓`}</span>
                 </motion.button>
 
                 <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => setShowGroupingModal(true)}
-                    className="btn-clay bg-indigo-500 text-white px-8 py-5 text-xl flex items-center shadow-lg border-2 border-indigo-400"
+                    className="btn-clay bg-indigo-500 text-white px-5 sm:px-8 py-4 sm:py-5 text-sm sm:text-xl flex items-center justify-center shadow-lg border-2 border-indigo-400"
                 >
-                    <Users className="w-6 h-6 mr-2" />
+                    <Users className="w-5 h-5 sm:w-6 sm:h-6 mr-2" />
                     分組助手
                 </motion.button>
 
@@ -1337,10 +1360,10 @@ const StudentManager = ({ cls, userId, onBack, onStartGame }) => {
                     whileTap={{ scale: 0.95 }}
                     onClick={() => setShowInsightBook(true)}
                     disabled={students.length < 2}
-                    className={`btn-clay bg-gradient-to-br from-rose-500 to-pink-600 text-white px-8 py-5 text-xl flex items-center shadow-lg border-2 border-rose-400 ${students.length < 2 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className={`btn-clay bg-gradient-to-br from-rose-500 to-pink-600 text-white px-5 sm:px-8 py-4 sm:py-5 text-sm sm:text-xl flex items-center justify-center shadow-lg border-2 border-rose-400 ${students.length < 2 ? 'opacity-50 cursor-not-allowed' : ''}`}
                     title="AI 找出最容易混淆的學生 pair 與區分點"
                 >
-                    <Sparkles className="w-6 h-6 mr-2" />
+                    <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 mr-2" />
                     攻略本
                 </motion.button>
 
@@ -1350,10 +1373,10 @@ const StudentManager = ({ cls, userId, onBack, onStartGame }) => {
                         whileTap={{ scale: 0.95 }}
                         onClick={handleBatchRecrop}
                         disabled={students.length === 0 || !!batchCrop}
-                        className={`btn-clay bg-gradient-to-br from-emerald-500 to-teal-600 text-white px-8 py-5 text-xl flex items-center shadow-lg border-2 border-emerald-400 ${students.length === 0 || batchCrop ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        className={`btn-clay bg-gradient-to-br from-emerald-500 to-teal-600 text-white px-5 sm:px-8 py-4 sm:py-5 text-sm sm:text-xl flex items-center justify-center shadow-lg border-2 border-emerald-400 ${students.length === 0 || batchCrop ? 'opacity-50 cursor-not-allowed' : ''}`}
                         title="把全班照片用 AI 重新對齊人臉中央"
                     >
-                        <span className="text-2xl mr-2">✂️</span>
+                        <span className="text-xl sm:text-2xl mr-2">✂️</span>
                         裁切全班
                     </motion.button>
                 )}
@@ -1363,22 +1386,22 @@ const StudentManager = ({ cls, userId, onBack, onStartGame }) => {
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="w-full max-w-5xl mb-12 px-4 flex flex-col gap-6"
+                className="w-full max-w-5xl mb-8 sm:mb-12 px-3 sm:px-4 flex flex-col gap-4 sm:gap-6"
             >
                 {/* Search Bar */}
                 <div className="relative group w-full">
                     <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-3xl md:rounded-[32px] opacity-20 blur-xl group-focus-within:opacity-40 transition-opacity duration-500" />
-                    <div className="relative bg-white/90 backdrop-blur-xl rounded-3xl md:rounded-[32px] border-2 border-indigo-100 shadow-clay-card flex items-center px-4 md:px-6 py-1 h-16 md:h-20 transition-all group-focus-within:scale-[1.02] group-focus-within:border-indigo-300">
-                        <Search className="text-indigo-400 w-6 h-6 md:w-8 md:h-8 mr-3 md:mr-4" />
+                    <div className="relative bg-white/90 backdrop-blur-xl rounded-2xl sm:rounded-3xl md:rounded-[32px] border-2 border-indigo-100 shadow-clay-card flex items-center px-3 sm:px-4 md:px-6 py-1 h-14 sm:h-16 md:h-20 transition-all group-focus-within:scale-[1.02] group-focus-within:border-indigo-300">
+                        <Search className="text-indigo-400 w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 mr-2 sm:mr-3 md:mr-4 flex-shrink-0" />
                         <input
                             type="text"
                             placeholder="搜尋學員姓名或座號..."
-                            className="w-full bg-transparent border-none outline-none text-lg md:text-xl font-bold text-indigo-950 placeholder-indigo-300 h-full"
+                            className="w-full bg-transparent border-none outline-none text-base sm:text-lg md:text-xl font-bold text-indigo-950 placeholder-indigo-300 h-full min-w-0"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
                         {searchQuery && (
-                            <button onClick={() => setSearchQuery('')} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+                            <button onClick={() => setSearchQuery('')} className="p-2 hover:bg-slate-100 rounded-full transition-colors flex-shrink-0">
                                 <Trash2 className="w-5 h-5 text-slate-400" />
                             </button>
                         )}
@@ -1386,8 +1409,8 @@ const StudentManager = ({ cls, userId, onBack, onStartGame }) => {
                 </div>
 
                 {/* Tag Filter (RWD Wrap) */}
-                <div className="w-full pb-4 px-4 overflow-visible">
-                    <div className="flex flex-wrap gap-3 justify-center">
+                <div className="w-full pb-2 sm:pb-4 px-1 sm:px-4 overflow-visible">
+                    <div className="flex flex-wrap gap-2 sm:gap-3 justify-center">
                         <button
                             onClick={() => {
                                 setTagFilter('all');
@@ -1417,20 +1440,20 @@ const StudentManager = ({ cls, userId, onBack, onStartGame }) => {
             </motion.div>
 
             {!isShared && (
-            <div className="flex flex-col md:flex-row gap-8 w-full max-w-5xl mb-24 px-4">
-                <div className="clay-card clay-card-create flex-1 p-8 md:p-12 relative overflow-hidden text-white">
+            <div className="flex flex-col md:flex-row gap-5 sm:gap-8 w-full max-w-5xl mb-12 sm:mb-24 px-3 sm:px-4">
+                <div className="clay-card clay-card-create flex-1 !p-6 sm:!p-8 md:!p-12 relative overflow-hidden text-white">
                     {/* Decorative Background */}
                     <div className="absolute -top-20 -right-20 w-80 h-80 bg-white/10 rounded-full blur-3xl opacity-50 pointer-events-none" />
                     <div className="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-black/10 to-transparent pointer-events-none" />
 
                     <div className="relative z-10">
-                        <div className="flex items-center gap-6 mb-10">
-                            <div className="w-20 h-20 bg-white/20 backdrop-blur-md rounded-3xl flex items-center justify-center shadow-lg border border-white/30 transform -rotate-6">
-                                <UserPlus className="w-10 h-10 text-white drop-shadow-md" />
+                        <div className="flex items-center gap-4 sm:gap-6 mb-6 sm:mb-10">
+                            <div className="w-14 h-14 sm:w-20 sm:h-20 bg-white/20 backdrop-blur-md rounded-2xl sm:rounded-3xl flex items-center justify-center shadow-lg border border-white/30 transform -rotate-6 flex-shrink-0">
+                                <UserPlus className="w-7 h-7 sm:w-10 sm:h-10 text-white drop-shadow-md" />
                             </div>
-                            <div>
-                                <h3 className="text-4xl font-black text-white leading-tight drop-shadow-sm">收編新戰友</h3>
-                                <p className="text-indigo-100/80 font-bold text-sm tracking-[0.2em] mt-2 uppercase bg-white/10 px-3 py-1 rounded-full w-fit">Create Profile</p>
+                            <div className="min-w-0">
+                                <h3 className="text-2xl sm:text-4xl font-black text-white leading-tight drop-shadow-sm truncate">收編新戰友</h3>
+                                <p className="hidden sm:block text-indigo-100/80 font-bold text-sm tracking-[0.2em] mt-2 uppercase bg-white/10 px-3 py-1 rounded-full w-fit">Create Profile</p>
                             </div>
                         </div>
 
@@ -1772,7 +1795,7 @@ const StudentManager = ({ cls, userId, onBack, onStartGame }) => {
             )}
 
 
-            <div ref={studentListRef} className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-6 w-full max-w-7xl px-4 pb-20">
+            <div ref={studentListRef} className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] sm:grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-3 sm:gap-6 w-full max-w-7xl px-3 sm:px-4 pb-12 sm:pb-20">
                 {filteredStudents.map(student => (
                     <StudentCard
                         key={student.id}
@@ -2248,15 +2271,15 @@ const StudentCard = ({ student, onEdit, onDelete, onLongPress, readOnly = false 
             {/* Card Container - Pro Max Premium */}
             <div className="w-full aspect-[3/4] clay-card p-0 overflow-hidden relative border-4 border-white group-hover:border-indigo-200 shadow-clay-card group-hover:shadow-indigo-500/30 transition-all duration-300 rounded-[32px] bg-white/80 backdrop-blur-xl">
 
-                {/* Action Buttons (Compact) — 唯讀模式不顯示 */}
+                {/* Action Buttons (Compact) — 唯讀模式不顯示。手機端常駐顯示，桌機 hover 才出現 */}
                 {!readOnly && (
-                    <div className="absolute top-2 right-2 flex flex-col gap-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <div className="absolute top-2 right-2 flex flex-col gap-2 z-20 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-300">
                         <button
                             onClick={(e) => { e.stopPropagation(); onDelete(student.id); }}
                             className="btn-square-danger shadow-lg hover:scale-110 transition-transform bg-white/90 backdrop-blur-md"
                             title="移除"
                         >
-                            <Trash2 className="w-5 h-5" />
+                            <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
                         </button>
                     </div>
                 )}
@@ -2275,13 +2298,13 @@ const StudentCard = ({ student, onEdit, onDelete, onLongPress, readOnly = false 
                     )}
 
                     {/* Gradient Overlay & Info */}
-                    <div className="absolute inset-x-0 bottom-0 p-4 pt-24 bg-gradient-to-t from-white via-white/95 to-transparent z-20">
+                    <div className="absolute inset-x-0 bottom-0 p-2 sm:p-4 pt-16 sm:pt-24 bg-gradient-to-t from-white via-white/95 to-transparent z-20">
                         <div className="flex flex-col items-center text-center">
-                            <p className="text-indigo-950 font-black text-xl leading-tight drop-shadow-sm w-full truncate px-2 relative z-30">
+                            <p className="text-indigo-950 font-black text-base sm:text-xl leading-tight drop-shadow-sm w-full truncate px-1 sm:px-2 relative z-30">
                                 {student.name}
                             </p>
                             {student.seatNumber && (
-                                <span className="mt-2 px-3 py-1 bg-indigo-500 text-white rounded-full text-xs font-bold shadow-md shadow-indigo-200 uppercase tracking-wider relative z-30">
+                                <span className="mt-1 sm:mt-2 px-2 sm:px-3 py-0.5 sm:py-1 bg-indigo-500 text-white rounded-full text-[10px] sm:text-xs font-bold shadow-md shadow-indigo-200 uppercase tracking-wider relative z-30">
                                     #{student.seatNumber}
                                 </span>
                             )}
@@ -2483,20 +2506,20 @@ const TagEditor = ({ student, onClose, onSave, onRecrop, onUploadPhoto, onRestor
     };
 
     return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4 transition-all" onClick={onClose}>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-2 sm:p-4 transition-all" onClick={onClose}>
             <motion.div
                 initial={{ scale: 0.95, opacity: 0, y: 20 }}
                 animate={{ scale: 1, opacity: 1, y: 0 }}
                 onClick={(e) => e.stopPropagation()}
-                className="clay-card p-0 max-w-6xl w-full relative flex flex-col md:flex-row overflow-hidden shadow-2xl h-[90vh] md:h-[85vh] md:max-h-[800px]"
+                className="clay-card !p-0 max-w-6xl w-full relative flex flex-col md:flex-row overflow-hidden shadow-2xl h-[95vh] md:h-[85vh] md:max-h-[800px] !rounded-3xl sm:!rounded-[40px]"
             >
                 {/* Close Button Mobile/Desktop */}
-                <button onClick={onClose} className="absolute top-4 right-4 z-50 text-slate-400 hover:text-rose-500 bg-white/50 backdrop-blur-sm p-2 rounded-full transition-colors">
-                    <XCircle className="w-8 h-8" />
+                <button onClick={onClose} className="absolute top-2 right-2 sm:top-4 sm:right-4 z-50 text-slate-400 hover:text-rose-500 bg-white/70 sm:bg-white/50 backdrop-blur-sm p-1.5 sm:p-2 rounded-full transition-colors">
+                    <XCircle className="w-7 h-7 sm:w-8 sm:h-8" />
                 </button>
 
                 {/* Left: Photo Area */}
-                <div className="w-full md:w-[45%] lg:w-[40%] bg-slate-900 relative flex items-center justify-center overflow-hidden group min-h-[30vh] md:min-h-full">
+                <div className="w-full md:w-[45%] lg:w-[40%] bg-slate-900 relative flex items-center justify-center overflow-hidden group h-[40vh] md:h-auto md:min-h-full flex-shrink-0">
                     <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/30 to-purple-900/20 z-0" />
 
                     {student.photoUrl ? (
@@ -2554,9 +2577,9 @@ const TagEditor = ({ student, onClose, onSave, onRecrop, onUploadPhoto, onRestor
                         </button>
                     )}
 
-                    {/* 既有特徵疊加層 (繽紛明顯版 Pro Max) - 移到下方避免擋住臉 */}
+                    {/* 既有特徵疊加層 (繽紛明顯版 Pro Max) - 桌機才覆蓋，手機改放在右側資訊區避免擠壓 */}
                     {(description || (tags && tags.length > 0)) && (
-                        <div className="absolute bottom-4 left-4 right-4 z-40 pointer-events-none md:bottom-8 md:left-8 md:right-8">
+                        <div className="hidden md:block absolute bottom-4 left-4 right-4 z-40 pointer-events-none md:bottom-8 md:left-8 md:right-8">
                             <motion.div
                                 initial={{ opacity: 0, scale: 0.9, y: 20 }}
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -2627,7 +2650,7 @@ const TagEditor = ({ student, onClose, onSave, onRecrop, onUploadPhoto, onRestor
                     </div>
 
                     {/* AI Generate Button & Undo Button */}
-                    <div className="absolute top-4 right-4 md:top-6 md:right-6 z-30 flex flex-col items-end gap-3">
+                    <div className="absolute top-2 right-2 md:top-6 md:right-6 z-30 flex flex-col items-end gap-1.5 sm:gap-3 max-w-[60%] md:max-w-none">
                         <AnimatePresence>
                             {undoSnapshot && (
                                 <motion.button
@@ -2856,7 +2879,7 @@ const TagEditor = ({ student, onClose, onSave, onRecrop, onUploadPhoto, onRestor
                 )}
 
                 {/* Right: Details & Tags */}
-                <div className="w-full md:w-[55%] lg:w-[60%] flex flex-col bg-white/60 backdrop-blur-xl h-full overflow-hidden">
+                <div className="w-full md:w-[55%] lg:w-[60%] flex flex-col bg-white/60 backdrop-blur-xl flex-1 md:h-full overflow-hidden min-h-0">
 
                     {/* Header (Fixed) */}
                     <div className="hidden md:block p-6 md:p-10 md:pb-4 flex-shrink-0">
@@ -2872,7 +2895,7 @@ const TagEditor = ({ student, onClose, onSave, onRecrop, onUploadPhoto, onRestor
                     </div>
 
                     {/* Scrollable Content Body */}
-                    <div className="flex-1 overflow-y-auto px-6 md:px-10 py-2 custom-scrollbar">
+                    <div className="flex-1 overflow-y-auto px-4 sm:px-6 md:px-10 py-3 sm:py-2 custom-scrollbar">
                         {/* AI Description Editor / Result */}
                         <div className="mb-6 flex-shrink-0 relative">
                             <h3 className="flex items-center gap-2 text-indigo-800 font-bold text-sm uppercase tracking-wide mb-2">
@@ -2942,9 +2965,9 @@ const TagEditor = ({ student, onClose, onSave, onRecrop, onUploadPhoto, onRestor
                     </div>
 
                     {/* Footer Buttons (Fixed) */}
-                    <div className="p-6 md:p-10 md:pt-4 flex gap-4 flex-shrink-0 bg-gradient-to-t from-white/40 via-white/40 to-transparent">
-                        <button onClick={onClose} className="btn-clay btn-clay-rose flex-1 py-4 text-lg shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all">關閉</button>
-                        <button onClick={() => handleInternalSave(tags, description, true)} disabled={isSaving} className="btn-clay btn-clay-primary flex-[2] py-4 text-lg shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all">
+                    <div className="p-4 sm:p-6 md:p-10 md:pt-4 flex gap-3 sm:gap-4 flex-shrink-0 bg-gradient-to-t from-white/60 via-white/40 to-transparent border-t border-white/40 safe-area-pb">
+                        <button onClick={onClose} className="btn-clay btn-clay-rose flex-1 !py-3 sm:!py-4 text-base sm:text-lg shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all">關閉</button>
+                        <button onClick={() => handleInternalSave(tags, description, true)} disabled={isSaving} className="btn-clay btn-clay-primary flex-[2] !py-3 sm:!py-4 text-base sm:text-lg shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all">
                             {isSaving ? '儲存中...' : '儲存並關閉'}
                         </button>
                     </div>
