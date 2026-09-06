@@ -1,5 +1,7 @@
 # React + Vite
 
+🌐 **線上使用：[臉盲教師救星 - 識生學坊](https://cagoooo.github.io/recognize/)**
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:
@@ -26,7 +28,7 @@ If you are developing a production application, we recommend using TypeScript wi
 - Repository：`cagoooo/recognize`
 - 可見性：公開
 - 主要技術：JavaScript、React、Vite、Firebase、Tailwind CSS、Playwright
-- 線上入口：未在 GitHub repository metadata 設定
+- 線上入口：<https://cagoooo.github.io/recognize/>
 
 ### 可以怎麼應用
 
