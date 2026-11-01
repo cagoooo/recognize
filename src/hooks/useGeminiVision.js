@@ -1,42 +1,11 @@
 import { useState } from 'react';
-import { GoogleGenerativeAI } from '@google/generative-ai';
-
-// Initialize Gemini API
-const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
+import { askGemini, resizeImageForAi } from '../lib/geminiClient';
 
 export const useGeminiVision = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [description, setDescription] = useState(null);
     const [tags, setTags] = useState([]);
-
-    /**
-     * 封裝重試邏輯，專門應對 503 (負載過高) 錯誤
-     */
-    const withRetry = async (fn, maxRetries = 3, initialDelay = 1000) => {
-        let lastError;
-        for (let i = 0; i < maxRetries; i++) {
-            try {
-                return await fn();
-            } catch (error) {
-                lastError = error;
-                const isServiceUnavailable =
-                    error.message?.includes("503") ||
-                    error.message?.includes("Service Unavailable") ||
-                    error.message?.includes("high demand") ||
-                    error.message?.includes("finish_reason: OTHER");
-
-                if (isServiceUnavailable && i < maxRetries - 1) {
-                    const delay = initialDelay * Math.pow(2, i);
-                    console.warn(`Gemini Vision 伺服器忙碌 (503)，將於 ${delay}ms 後進行第 ${i + 1} 次重試...`);
-                    await new Promise(resolve => setTimeout(resolve, delay));
-                    continue;
-                }
-                throw error;
-            }
-        }
-        throw lastError;
-    };
 
     const generateDescription = async (imageUrl) => {
         setLoading(true);
@@ -61,38 +30,15 @@ export const useGeminiVision = () => {
         }
 
         try {
-            // 1. Fetch the image and convert to base64
+            // 1. Fetch the image and shrink it
             const response = await fetch(imageUrl);
             const blob = await response.blob();
-            const base64Data = await new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.readAsDataURL(blob);
-                reader.onloadend = () => resolve(reader.result.split(',')[1]);
-                reader.onerror = reject;
-            });
+            const image = await resizeImageForAi(blob);
 
-            // 2. Prepare the model and prompt
-            const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
-            const prompt = `
-                請扮演一位資深的特教觀察專家。請觀察這張照片，並回傳一個 JSON 物件，包含以下兩個欄位：
-                1. "description": 用繁體中文描述這位學生的外觀特徵（例如：戴眼鏡、長髮、笑臉），作為老師記憶學生的口訣。請用條列式，重點描述 3 個最明顯的特徵，總字數 50 字以內，語氣生動活潑。
-                2. "tags": 根據外觀特徵提取 3-5 個關鍵字標籤（Tag），例如 ["眼鏡", "長髮", "笑容", "藍色衣服"]。
+            // 2. Generate content (retry is handled by the backend)
+            const text = await askGemini('describe', [image]);
 
-                請務必只回傳純 JSON 格式，不要有 Markdown 標記 (如 \`\`\`json)。
-            `;
-
-            const imagePart = {
-                inlineData: {
-                    data: base64Data,
-                    mimeType: blob.type || "image/jpeg",
-                },
-            };
-
-            // 3. Generate content with retry
-            const result = await withRetry(() => model.generateContent([prompt, imagePart]));
-            const text = result.response.text();
-
-            // 4. Parse JSON
+            // 3. Parse JSON
             let parsedResult;
             try {
                 // Clean input for simple JSON parsing
@@ -113,9 +59,11 @@ export const useGeminiVision = () => {
 
         } catch (err) {
             console.error("Gemini Vision Error:", err);
-            if (err.message?.includes("API key not valid")) {
-                setError("API Key 無效或未設定，請檢查 .env 檔案");
-            } else if (err.message?.includes("503") || err.message?.includes("high demand")) {
+            if (err.code === 'functions/unauthenticated') {
+                setError("登入狀態已過期，請重新登入後再試");
+            } else if (err.code === 'functions/resource-exhausted') {
+                setError(err.message);
+            } else if (err.code === 'functions/unavailable') {
                 setError("AI 伺服器目前負載過高，已自動重試但仍失敗，請稍候再試");
             } else {
                 setError("AI 分析失敗，請稍後再試");

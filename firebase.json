@@ -8,6 +8,17 @@
   "storage": {
     "rules": "storage.rules"
   },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "recognize",
+      "runtime": "nodejs22",
+      "ignore": [
+        "node_modules",
+        "__tests__"
+      ]
+    }
+  ],
   "hosting": {
     "public": "dist",
     "ignore": [

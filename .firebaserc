@@ -1,5 +1,7 @@
 {
-  "projects": {},
+  "projects": {
+    "default": "face-2fa85"
+  },
   "targets": {},
   "etags": {}
 }

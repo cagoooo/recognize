@@ -2,7 +2,7 @@
 
 🌐 **線上使用：[臉盲教師救星 - 識生學坊](https://cagoooo.github.io/recognize/)**
 
-> 📌 **目前版本：v3.14.0**（依據 `package.json`）
+> 📌 **目前版本：v3.15.0**（依據 `package.json`）
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 

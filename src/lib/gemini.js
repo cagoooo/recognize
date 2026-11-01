@@ -1,72 +1,6 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-const genAI = new GoogleGenerativeAI(API_KEY);
+import { askGemini, resizeImageForAi } from './geminiClient';
 
 const CACHE_KEY_PREFIX = 'gemini_memory_anchor_';
-
-/**
- * 將圖片縮放至指定寬度以節省 Token
- * @param {Blob} blob 圖片 Blob
- * @param {number} maxWidth 最大寬度
- * @returns {Promise<{data: string, mimeType: string}>}
- */
-const resizeImageForAi = async (blob, maxWidth = 512) => {
-    return new Promise((resolve) => {
-        const img = new Image();
-        img.src = URL.createObjectURL(blob);
-        img.onload = () => {
-            const canvas = document.createElement('canvas');
-            let width = img.width;
-            let height = img.height;
-
-            if (width > maxWidth) {
-                height = (maxWidth / width) * height;
-                width = maxWidth;
-            }
-
-            canvas.width = width;
-            canvas.height = height;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0, width, height);
-
-            const dataUrl = canvas.toDataURL(blob.type, 0.7);
-            URL.revokeObjectURL(img.src);
-            resolve({
-                data: dataUrl.split(',')[1],
-                mimeType: blob.type
-            });
-        };
-    });
-};
-
-/**
- * 封裝重試邏輯，專門應對 503 (負載過高) 錯誤
- */
-const withRetry = async (fn, maxRetries = 3, initialDelay = 1000) => {
-    let lastError;
-    for (let i = 0; i < maxRetries; i++) {
-        try {
-            return await fn();
-        } catch (error) {
-            lastError = error;
-            const isServiceUnavailable =
-                error.message?.includes("503") ||
-                error.message?.includes("Service Unavailable") ||
-                error.message?.includes("high demand") ||
-                error.message?.includes("finish_reason: OTHER");
-
-            if (isServiceUnavailable && i < maxRetries - 1) {
-                const delay = initialDelay * Math.pow(2, i);
-                console.warn(`Gemini 伺服器忙碌 (503)，將於 ${delay}ms 後進行第 ${i + 1} 次重試...`);
-                await new Promise(resolve => setTimeout(resolve, delay));
-                continue;
-            }
-            throw error;
-        }
-    }
-    throw lastError;
-};
 
 /**
  * 根據學生照片 URL 生成記憶錨點
@@ -77,11 +11,6 @@ const withRetry = async (fn, maxRetries = 3, initialDelay = 1000) => {
 export const generateMemoryAnchor = async (photoUrl, existingHint = null) => {
     if (existingHint) return existingHint;
 
-    if (!API_KEY) {
-        console.warn("Gemini API Key 尚未設定，將跳過 AI 記憶輔助功能。");
-        return null;
-    }
-
     // 1. 檢查快取
     const cacheKey = CACHE_KEY_PREFIX + photoUrl;
     const cachedResult = localStorage.getItem(cacheKey);
@@ -91,39 +20,12 @@ export const generateMemoryAnchor = async (photoUrl, existingHint = null) => {
     }
 
     try {
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
-
         // 取得圖片資料並縮放
         const response = await fetch(photoUrl);
         const blob = await response.blob();
-        const { data: imageData, mimeType } = await resizeImageForAi(blob);
+        const image = await resizeImageForAi(blob);
 
-        const prompt = `
-      角色設定：你是一位資深的特教觀察專家，擅長用「正向、具體、好記」的特徵來幫助老師記住學生。
-      任務：請觀察這張學生照片，產出一句「超級簡短」的記憶口訣（15 字以內）。
-      
-      要求：
-      1. 聚焦於：髮型、眼鏡、笑容、臉型或顯眼配件。
-      2. 風格：溫暖、生動、稍微帶點幽默感。
-      3. 格式：直接給出口訣，不要有任何前言後語。
-      
-      範例：
-      - 「招牌瞇瞇眼，笑起來像暖陽。」
-      - 「黑框眼鏡小博士，眼神超專注。」
-      - 「綁著高馬尾，活力滿滿的運動員。」
-    `;
-
-        const result = await withRetry(() => model.generateContent([
-            prompt,
-            {
-                inlineData: {
-                    data: imageData,
-                    mimeType: mimeType
-                }
-            }
-        ]));
-
-        const text = result.response.text().trim();
+        const text = await askGemini('memoryAnchor', [image]);
 
         // 2. 寫入快取 (成功才寫入)
         if (text) {

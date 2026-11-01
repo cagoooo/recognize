@@ -9,5 +9,6 @@ vi.mock('../firebase', () => ({
     },
     db: {},
     storage: {},
+    functions: {},
     googleProvider: {},
 }));

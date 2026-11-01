@@ -8,13 +8,13 @@
  * 成本控制：
  *   - 粗篩篩選率 ~85%：30 人班 435 對 → 留 30-50 對給 Gemini
  *   - 月度配額：localStorage 計數，超過 1000 次直接擋下
+ *   - 後端速率限制：functions/index.js 依帳號與全站次數把關（真正擋得住的那一道）
  *   - 每對成本約 NT$0.005-0.01（gemini-2.5-flash-lite 雙圖輸入）
  */
 
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { extractFaceFingerprint, cosineSimilarity } from './faceCrop';
+import { askGemini } from './geminiClient';
 
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 const MONTHLY_QUOTA = 1000;
 const SIMILARITY_THRESHOLD = 0.6;  // 粗篩門檻：餘弦 > 0.6 才送 Gemini
 const MAX_PAIRS_PER_CLASS = 50;     // Gemini call 上限（守住單班成本）
@@ -116,43 +116,17 @@ export async function coarsePairwiseScreen(students) {
 
 // ---- 精選：呼叫 Gemini 對單對學生比對 ----
 
-const COMPARE_PROMPT = `角色：你是一位細心的特教觀察專家。
-任務：比較這兩張學生照片，找出「最快幫助老師區分他們」的視覺特徵。
-
-要求：
-1. 一句話聚焦「最明顯的差異」（不超過 25 字）
-2. 用「A 是 ___，B 是 ___」的對比格式
-3. 聚焦：髮型、臉型、眼鏡、笑容、五官比例
-4. 不要用「左邊/右邊」（順序會變），用「A」「B」代稱
-
-範例：
-- 「A 戴黑框眼鏡圓臉，B 是無框眼鏡瓜子臉」
-- 「A 高馬尾活潑，B 短髮文靜」
-- 「A 嘴角有酒窩，B 顴骨較高」
-
-只回 JSON：{"distinguishingPoint": "..."}`;
-
 async function compareWithGemini(blobA, blobB) {
-    if (!API_KEY) throw new Error('Gemini API Key 未設定');
-
-    const genAI = new GoogleGenerativeAI(API_KEY);
-    const model = genAI.getGenerativeModel({
-        model: 'gemini-2.5-flash-lite',
-        generationConfig: { responseMimeType: 'application/json' },
-    });
-
     const [b64A, b64B] = await Promise.all([
         blobToBase64(blobA),
         blobToBase64(blobB),
     ]);
 
-    const result = await model.generateContent([
-        COMPARE_PROMPT,
-        { inlineData: { data: b64A, mimeType: 'image/jpeg' } },
-        { inlineData: { data: b64B, mimeType: 'image/jpeg' } },
+    const text = await askGemini('compare', [
+        { data: b64A, mimeType: 'image/jpeg' },
+        { data: b64B, mimeType: 'image/jpeg' },
     ]);
 
-    const text = result.response.text().trim();
     try {
         const parsed = JSON.parse(text);
         return parsed.distinguishingPoint || '無法產生區分點';
@@ -219,6 +193,7 @@ export async function generateClassInsight(students, onProgress = () => { }) {
     };
 
     const results = [];
+    let reason;
     for (let i = 0; i < toProcess.length; i++) {
         const pair = toProcess[i];
         onProgress({ phase: 'comparing', current: i + 1, total: toProcess.length });
@@ -234,7 +209,11 @@ export async function generateClassInsight(students, onProgress = () => { }) {
             incrementQuota(1);
         } catch (err) {
             console.warn(`Compare failed for ${pair.aName} vs ${pair.bName}:`, err);
-            // 單對失敗不阻斷整體
+            // 次數用完時後面每一對都會失敗，直接停止；其他單對失敗不阻斷整體
+            if (err.code === 'functions/resource-exhausted') {
+                reason = err.message;
+                break;
+            }
         }
     }
 
@@ -244,6 +223,7 @@ export async function generateClassInsight(students, onProgress = () => { }) {
         pairs: results,
         geminiCalls: results.length,
         skipped,
+        reason,
     };
 }
 
