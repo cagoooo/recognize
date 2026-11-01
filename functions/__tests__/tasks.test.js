@@ -33,6 +33,7 @@ describe('buildGeminiRequest', () => {
         expect(request.contents[0].parts[0].text).toContain('比較這兩張學生照片');
         expect(request.contents[0].parts).toHaveLength(3);
         expect(request.generationConfig.responseMimeType).toBe('application/json');
+        expect(request.generationConfig.responseSchema.required).toEqual(['distinguishingPoint']);
     });
 });
 

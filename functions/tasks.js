@@ -52,7 +52,15 @@ export const TASKS = {
     compare: {
         prompt: COMPARE_PROMPT,
         imageCount: 2,
-        generationConfig: { responseMimeType: 'application/json' },
+        generationConfig: {
+            responseMimeType: 'application/json',
+            // 只要求 JSON 時模型偶爾會在結尾多吐文字，導致前端解析失敗，所以把欄位也鎖死
+            responseSchema: {
+                type: 'OBJECT',
+                properties: { distinguishingPoint: { type: 'STRING' } },
+                required: ['distinguishingPoint'],
+            },
+        },
     },
 };
 
