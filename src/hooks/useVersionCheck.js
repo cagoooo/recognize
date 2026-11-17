@@ -3,7 +3,8 @@
  *  - bundled 版本來自 vite.define 的 __APP_VERSION__ / __APP_COMMIT__ / __APP_BUILD_TIME__
  *  - 開機 + 每 5 分鐘 fetch /version.json（network-only，由 SW runtimeCaching 保證）
  *  - 偵測到 commit 不同 → 標記 hasUpdate=true，UI 顯示 banner
- *  - 使用者按「立刻更新」→ 清所有 caches + 註銷 SW + reload
+ *  - 使用者按「立刻更新」→ 清本工具的 caches + 註銷本工具的 SW + reload
+ *    （同網域 cagoooo.github.io 的其他工具快取與註冊不能動）
  */
 
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -18,6 +19,11 @@ const POLL_INTERVAL_MS = 5 * 60 * 1000; // 5 分鐘
 
 // base 路徑（vite.config.js 設定 /recognize/）
 const VERSION_URL = `${import.meta.env.BASE_URL}version.json?t=`;
+
+// 本工具自己的快取：workbox 預快取（名稱含 scope 網址）＋ vite.config.js runtimeCaching 的 cacheName
+const OWN_RUNTIME_CACHES = ['html-cache', 'firebase-storage-images', 'google-fonts-cache', 'gstatic-fonts-cache'];
+const ownScope = () => new URL(import.meta.env.BASE_URL, window.location.origin).href; // https://cagoooo.github.io/recognize/
+const isOwnCache = (name) => name.includes(ownScope()) || OWN_RUNTIME_CACHES.includes(name);
 
 export function useVersionCheck() {
     const [remote, setRemote] = useState(null);
@@ -59,15 +65,15 @@ export function useVersionCheck() {
     const applyUpdate = useCallback(async () => {
         setUpdating(true);
         try {
-            // 1. 清掉所有 cache
+            // 1. 清掉本工具的 cache
             if ('caches' in window) {
                 const names = await caches.keys();
-                await Promise.all(names.map(n => caches.delete(n)));
+                await Promise.all(names.filter(isOwnCache).map(n => caches.delete(n)));
             }
-            // 2. 註銷所有 SW（下次載入會註冊新版）
+            // 2. 註銷本工具的 SW（下次載入會註冊新版）
             if ('serviceWorker' in navigator) {
                 const regs = await navigator.serviceWorker.getRegistrations();
-                await Promise.all(regs.map(r => r.unregister()));
+                await Promise.all(regs.filter(r => r.scope.startsWith(ownScope())).map(r => r.unregister()));
             }
             // 3. 強制 hard reload
             window.location.reload();
