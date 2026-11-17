@@ -64,7 +64,7 @@ export default defineConfig({
             urlPattern: ({ request }) => request.mode === 'navigate',
             handler: 'NetworkFirst',
             options: {
-              cacheName: 'html-cache',
+              cacheName: 'recognize-html-cache',
               networkTimeoutSeconds: 3,
               expiration: { maxEntries: 5, maxAgeSeconds: 60 * 60 * 24 },
             },
@@ -75,7 +75,7 @@ export default defineConfig({
             urlPattern: /^https:\/\/firebasestorage\.googleapis\.com\/.*/i,
             handler: 'CacheFirst',
             options: {
-              cacheName: 'firebase-storage-images',
+              cacheName: 'recognize-firebase-storage-images',
               fetchOptions: {
                 mode: 'cors',
                 credentials: 'omit',
@@ -96,7 +96,7 @@ export default defineConfig({
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
             handler: 'StaleWhileRevalidate',
             options: {
-              cacheName: 'google-fonts-cache',
+              cacheName: 'recognize-google-fonts-cache',
               expiration: {
                 maxEntries: 10,
                 maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
@@ -110,7 +110,7 @@ export default defineConfig({
             urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
             handler: 'CacheFirst',
             options: {
-              cacheName: 'gstatic-fonts-cache',
+              cacheName: 'recognize-gstatic-fonts-cache',
               expiration: {
                 maxEntries: 10,
                 maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year

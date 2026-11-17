@@ -21,7 +21,7 @@ const POLL_INTERVAL_MS = 5 * 60 * 1000; // 5 分鐘
 const VERSION_URL = `${import.meta.env.BASE_URL}version.json?t=`;
 
 // 本工具自己的快取：workbox 預快取（名稱含 scope 網址）＋ vite.config.js runtimeCaching 的 cacheName
-const OWN_RUNTIME_CACHES = ['html-cache', 'firebase-storage-images', 'google-fonts-cache', 'gstatic-fonts-cache'];
+const OWN_RUNTIME_CACHES = ['recognize-html-cache', 'recognize-firebase-storage-images', 'recognize-google-fonts-cache', 'recognize-gstatic-fonts-cache'];
 const ownScope = () => new URL(import.meta.env.BASE_URL, window.location.origin).href; // https://cagoooo.github.io/recognize/
 const isOwnCache = (name) => name.includes(ownScope()) || OWN_RUNTIME_CACHES.includes(name);
 
