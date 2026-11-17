@@ -19,7 +19,14 @@ jobs:
     - name: Install dependencies
       run: npm ci
     - name: Install Playwright Browsers
-      run: npx playwright install --with-deps
+      # 只裝測試用到的 chromium；下載偶爾卡住，3 分鐘沒裝完就重試，最多 3 次
+      timeout-minutes: 12
+      run: |
+        for i in 1 2 3; do
+          timeout 180 npx playwright install --with-deps chromium && exit 0
+          echo "第 $i 次安裝失敗或逾時，重試"
+        done
+        exit 1
     
     - name: Run Playwright tests
       id: playwright
