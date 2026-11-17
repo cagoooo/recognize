@@ -49,6 +49,7 @@ import GameMode from './components/GameMode';
 import StatsView from './components/StatsView';
 import InsightBook from './components/InsightBook';
 import VersionBadge from './components/VersionBadge';
+import SiteFooter from './components/SiteFooter';
 import ShareClassModal from './components/ShareClassModal';
 
 const App = () => {
@@ -340,6 +341,9 @@ const App = () => {
                     </AnimatePresence>
                 </div>
             </main>
+
+            {/* 網站頁尾（遊戲進行中不顯示） */}
+            {!(user && activeView === 'game') && <SiteFooter />}
 
             <VersionBadge />
 

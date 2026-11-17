@@ -1398,3 +1398,174 @@ html {
   box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
   border-color: #a5b4fc;
 }
+
+/* --- 網站頁尾（作者署名）2026-11-17 --- */
+.site-footer {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 64rem;
+  padding: 0 16px;
+  margin: 16px 0 72px; /* 留出右下角版本徽章的位置 */
+  text-align: left;
+}
+
+.site-footer__card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 32px;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid #fff;
+  box-shadow: var(--clay-card-shadow);
+}
+
+.site-footer__card::before {
+  content: '';
+  display: block;
+  height: 6px;
+  background: linear-gradient(90deg, var(--primary), #a855f7, var(--accent));
+}
+
+.site-footer__inner {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.8fr) 2.6fr;
+  gap: 24px;
+  align-items: center;
+  padding: 24px 32px 20px;
+}
+
+.site-footer__brand {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.site-footer__brand strong {
+  display: block;
+  font-size: 1.25rem;
+  font-weight: 900;
+  color: #1e1b4b;
+}
+
+.site-footer__brand span {
+  display: block;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.site-footer__points {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.site-footer__points li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid var(--indigo-50);
+}
+
+.site-footer__points strong {
+  display: block;
+  font-size: 1rem;
+  font-weight: 900;
+  color: #1e1b4b;
+}
+
+.site-footer__points small {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.site-footer__icon {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.site-footer__icon--indigo { color: var(--primary); background: var(--indigo-50); }
+.site-footer__icon--rose { color: var(--accent); background: #fff1f2; }
+.site-footer__icon--orange { color: var(--secondary); background: #fff7ed; }
+
+.site-footer__credit {
+  border-top: 1px solid var(--indigo-100);
+  padding: 14px 24px 16px;
+  text-align: center;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.site-footer__heart {
+  display: inline-block;
+  margin: 0 2px;
+}
+
+.site-footer__author {
+  color: var(--primary);
+  font-weight: 900;
+  text-decoration: none;
+  border-bottom: 2px dotted currentColor;
+  padding: 2px 0 1px;
+  transition: color 0.2s;
+}
+
+.site-footer__author:hover {
+  color: var(--accent);
+}
+
+.site-footer__dot {
+  margin: 0 4px;
+}
+
+@media (max-width: 900px) {
+  .site-footer__inner {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .site-footer {
+    padding: 0 12px;
+  }
+  .site-footer__inner {
+    padding: 22px 16px 18px;
+  }
+  .site-footer__brand {
+    flex-direction: column;
+    text-align: center;
+    gap: 10px;
+  }
+  .site-footer__points {
+    grid-template-columns: 1fr;
+  }
+  .site-footer__school {
+    display: block;
+    margin-top: 2px;
+  }
+  .site-footer__dot {
+    display: none;
+  }
+}
+
+@media print {
+  .site-footer {
+    display: none;
+  }
+}
