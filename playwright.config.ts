@@ -36,8 +36,7 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      // CI 下載 Chromium 失敗時，workflow 會設 PW_CHANNEL=chrome 改用測試機內建的 Google Chrome
-      use: { ...devices['Desktop Chrome'], ...(process.env.PW_CHANNEL ? { channel: process.env.PW_CHANNEL } : {}) },
+      use: { ...devices['Desktop Chrome'] },
     },
 
     // {

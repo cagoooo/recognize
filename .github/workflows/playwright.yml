@@ -5,10 +5,24 @@ on:
   pull_request:
     branches: [ main, master ]
 jobs:
-  test:
-    timeout-minutes: 60
-    # Playwright 1.58 不支援 ubuntu-latest（已換成 26.04）；比對截圖也是 24.04 拍的，固定在 24.04
+  pw-version:
+    # 讀出專案鎖定的 Playwright 版本，測試用同版本的官方環境（瀏覽器已內建，不必下載）
     runs-on: ubuntu-24.04
+    outputs:
+      v: ${{ steps.v.outputs.v }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        run: echo "v=$(node -p "require('./package-lock.json').packages['node_modules/playwright-core'].version")" >> "$GITHUB_OUTPUT"
+
+  test:
+    needs: pw-version
+    timeout-minutes: 60
+    runs-on: ubuntu-24.04
+    # 在 Playwright 官方環境裡跑：瀏覽器已內建，不受測試機作業系統更新（ubuntu-latest 換 26.04）或下載站卡住影響
+    container:
+      image: mcr.microsoft.com/playwright:v${{ needs.pw-version.outputs.v }}-noble
+      options: --user 1001
     permissions:
       contents: write
     steps:
@@ -18,20 +32,6 @@ jobs:
         node-version: lts/*
     - name: Install dependencies
       run: npm ci
-    - name: Install Playwright Browsers
-      # 只裝測試用到的 chromium；GitHub 測試機下載偶爾卡住，3 分鐘沒裝完就重試
-      # 兩次都失敗就改用測試機內建的 Google Chrome（PW_CHANNEL=chrome），不讓整個測試卡死
-      timeout-minutes: 12
-      run: |
-        for i in 1 2; do
-          timeout 180 npx playwright install --with-deps chromium && exit 0
-          echo "第 $i 次下載 Chromium 失敗或逾時"
-        done
-        echo "改用測試機內建的 Google Chrome"
-        npx playwright install-deps chromium
-        google-chrome --version
-        echo "PW_CHANNEL=chrome" >> "$GITHUB_ENV"
-    
     - name: Run Playwright tests
       id: playwright
       env:
@@ -45,8 +45,7 @@ jobs:
       run: npx playwright test
 
     - name: Update Snapshots & Commit (If Failed)
-      # 改用內建 Chrome 時畫面可能有細微差異，不可拿它覆蓋比對截圖基準
-      if: steps.playwright.outcome == 'failure' && env.PW_CHANNEL != 'chrome'
+      if: steps.playwright.outcome == 'failure'
       env:
          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
